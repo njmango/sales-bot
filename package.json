@@ -1,0 +1,20 @@
+{
+  "name": "sales-bot",
+  "version": "0.0.2",
+  "description": "Discord bot made by njmango to help facilitate simco sales",
+  "main": "src/testbot.js",
+  "scripts": {
+    "start": "node src/testbot.js"
+  },
+  "type": "module",
+  "author": "njmango",
+  "dependencies": {
+    "@discordjs/rest": "^2.3.0",
+    "chalk": "^4.1.2",
+    "discord-api-types": "^0.37.83",
+    "discord.js": "^14.15.2",
+    "dotenv": "^16.4.5",
+    "node-fetch": "^3.3.2",
+    "sqlite3": "^5.1.7"
+  }
+}
