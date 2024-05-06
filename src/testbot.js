@@ -41,6 +41,9 @@ db.run(`CREATE TABLE IF NOT EXISTS sales_list (
     client.login(token);
 });
 
+/*
+These shouldn't be necessary if the table already exists
+
 // Add columns if they don't exist, inside the callback
 const columnsToAdd = [
     { name: "username", type: "TEXT" },
@@ -61,7 +64,7 @@ columnsToAdd.forEach(column => {
         }
     });
 });
-
+*/
 
 
 const client = new Client({
