@@ -1,5 +1,13 @@
+// import all the requirements at the top for readability
+import { Client, GatewayIntentBits } from 'discord.js';
+import fetch from 'node-fetch';
 import sqlite3 from 'sqlite3';
+import dotenv from 'dotenv';
 import fs from 'fs';
+
+// get the environment variables from the .env file
+dotenv.config();
+const { token } = process.env;
 
 const logStream = fs.createWriteStream('./test-bot-log.txt', { flags: 'a' });
 
@@ -14,7 +22,6 @@ const db = new sqlite3.Database('./testsalesData.db', (err) => {
         return;
     }
 });
-
 
 // Ensure the table exists before starting the bot and handling messages
 db.run(`CREATE TABLE IF NOT EXISTS sales_list (
@@ -42,29 +49,9 @@ db.run(`CREATE TABLE IF NOT EXISTS sales_list (
     client.login(token);
 });
 
-    // Add columns if they don't exist, inside the callback
-    const columnsToAdd = [
-        { name: "username", type: "TEXT" },
-        { name: "action_type", type: "TEXT" },
-        { name: "orderNumber", type: "INTEGER" },
-        { name: "price", type: "REAL" },
-        { name: "price_modifier", type: "TEXT" },
-        { name: "is_fixed_price", type: "INTEGER" }
-    ];
 
-    columnsToAdd.forEach(column => {
-        db.run(`ALTER TABLE sales_list ADD COLUMN ${column.name} ${column.type}`, (err) => {
-            if (err) {
-                if (!err.message.includes("duplicate column name")) {
-                    logToFileAndConsole(`Error adding column ${column.name}: ${err.message}`);
-                }
-            } else {
-                logToFileAndConsole(`Column '${column.name}' added successfully.`);
-            }
-        });
-    });
-
-import { Client, GatewayIntentBits } from 'discord.js';
+// previously a section of code to re-add missing columns to the table was here and mis-tabbed, it has been removed
+// as it was simply redundant and unnecessary
 
 const client = new Client({
     intents: [
@@ -74,7 +61,6 @@ const client = new Client({
         GatewayIntentBits.GuildMembers,
     ],
 });
-const token = 'token';
 
 client.on('ready', () => {
     logToFileAndConsole(`Logged in as ${client.user.tag}!`);
@@ -736,6 +722,36 @@ function handleEditCommand(msg, args) {
     });
 }
 
+function validatePriceModifier(priceModifier, finalPrice = null) {
+    /*
+    This function validates the price modifier and final price.
+    The price modifier should be a number with an optional % sign.
+    The final price should be a positive number.
+
+    Arguments:
+        priceModifier -- the price modifier to validate
+        finalPrice -- the final price to validate
+
+    Returns:
+        True if the price modifier and final price are valid, False otherwise
+    */
+
+    // remove the % sign if present
+    const priceModifierClean = priceModifier.replace('%', '');
+
+    // ensure the price modifier is a number
+    if (isNaN(priceModifierClean)) {
+        return false;
+    }
+
+    // ensure the final price is positive with a singular exception for -1, this has the potential to be a flaw
+    // as such a different value should be used to represent the market price
+    if (finalPrice < 0 && finalPrice != -1) {
+        return false;
+    }
+}
+
+
 
 async function handleSellBuyCommand(msg, args) {
     const buying = msg.content.startsWith('!buy');
@@ -772,6 +788,11 @@ async function handleSellBuyCommand(msg, args) {
 
     // Calculate final price based on market price and modifier
     finalPrice = calculateFinalPrice(priceInfo.price, resolvedPriceModifier);
+
+    if (validatePriceModifier(priceModifier, finalPrice) == false) {
+        msg.channel.send("Invalid price modifier or final price.");
+        return;
+    }
 
     // Construct the message to send to the channel
     const responseMessage = `${buying ? 'Buying' : 'Selling'} ${resolvedItemName} at Quality ${quality} for ${quantity} units at ${finalPrice.toFixed(2)}`;
@@ -1006,10 +1027,6 @@ function calculateFinalPrice(basePrice, modifier) {
     }
     return finalPrice;
 }
-
-client.login(token);
-
-import fetch from 'node-fetch';
 
 async function findLowestPriceForItem(realmId, itemId, quality) {
     if (itemId === undefined) {
