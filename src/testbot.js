@@ -722,6 +722,36 @@ function handleEditCommand(msg, args) {
     });
 }
 
+function validatePriceModifier(priceModifier, finalPrice = null) {
+    /*
+    This function validates the price modifier and final price.
+    The price modifier should be a number with an optional % sign.
+    The final price should be a positive number.
+
+    Arguments:
+        priceModifier -- the price modifier to validate
+        finalPrice -- the final price to validate
+
+    Returns:
+        True if the price modifier and final price are valid, False otherwise
+    */
+
+    // remove the % sign if present
+    const priceModifierClean = priceModifier.replace('%', '');
+
+    // ensure the price modifier is a number
+    if (isNaN(priceModifierClean)) {
+        return false;
+    }
+
+    // ensure the final price is positive with a singular exception for -1, this has the potential to be a flaw
+    // as such a different value should be used to represent the market price
+    if (finalPrice < 0 && finalPrice != -1) {
+        return false;
+    }
+}
+
+
 
 async function handleSellBuyCommand(msg, args) {
     const buying = msg.content.startsWith('!buy');
@@ -758,6 +788,11 @@ async function handleSellBuyCommand(msg, args) {
 
     // Calculate final price based on market price and modifier
     finalPrice = calculateFinalPrice(priceInfo.price, resolvedPriceModifier);
+
+    if (validatePriceModifier(priceModifier, finalPrice) == false) {
+        msg.channel.send("Invalid price modifier or final price.");
+        return;
+    }
 
     // Construct the message to send to the channel
     const responseMessage = `${buying ? 'Buying' : 'Selling'} ${resolvedItemName} at Quality ${quality} for ${quantity} units at ${finalPrice.toFixed(2)}`;
