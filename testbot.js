@@ -1,7 +1,16 @@
 import sqlite3 from 'sqlite3';
+import fs from 'fs';
+
+const logStream = fs.createWriteStream('./live-bot-log.txt', { flags: 'a' });
+
+function logToFileAndConsole(message) {
+    console.log(message);  // Log to console
+    logStream.write(message + '\n');  // Write to file
+}
+
 const db = new sqlite3.Database('./testsalesData.db', (err) => {
     if (err) {
-        console.error('Error opening database ' + err.message);
+        logToFileAndConsole('Error opening database ' + err.message);
         return;
     }
 });
@@ -20,13 +29,14 @@ db.run(`CREATE TABLE IF NOT EXISTS sales_list (
     timestamp TEXT NOT NULL,
     action_type TEXT NOT NULL,
     price REAL,
-    price_modifier TEXT
+    price_modifier TEXT,
+    is_fixed_price INTEGER
 )`, (err) => {
     if (err) {
-        console.error("Create table error: " + err.message);
+        logToFileAndConsole("Create table error: " + err.message);
         return;
     }
-    console.log("Table 'sales_list' ensured.");
+    logToFileAndConsole("Table 'sales_list' ensured.");
 
     // Start the bot only after ensuring the table is ready
     client.login(token);
@@ -38,17 +48,18 @@ db.run(`CREATE TABLE IF NOT EXISTS sales_list (
         { name: "action_type", type: "TEXT" },
         { name: "orderNumber", type: "INTEGER" },
         { name: "price", type: "REAL" },
-        { name: "price_modifier", type: "TEXT" }
+        { name: "price_modifier", type: "TEXT" },
+        { name: "is_fixed_price", type: "INTEGER" }
     ];
 
     columnsToAdd.forEach(column => {
         db.run(`ALTER TABLE sales_list ADD COLUMN ${column.name} ${column.type}`, (err) => {
             if (err) {
                 if (!err.message.includes("duplicate column name")) {
-                    console.error(`Error adding column ${column.name}: ${err.message}`);
+                    logToFileAndConsole(`Error adding column ${column.name}: ${err.message}`);
                 }
             } else {
-                console.log(`Column '${column.name}' added successfully.`);
+                logToFileAndConsole(`Column '${column.name}' added successfully.`);
             }
         });
     });
@@ -63,155 +74,153 @@ const client = new Client({
         GatewayIntentBits.GuildMembers,
     ],
 });
-const token = 'MTIzNTMyMDkzMDgwNTIyMzU0NQ.GBFxRu.tRj-dDTTWUt68FaceKqmBdR8cnRXjGUzh6IFN4';
+const token = 'TOKEN HERE';
 
 client.on('ready', () => {
-    console.log(`Logged in as ${client.user.tag}!`);
-    updateItemPrices(); // Initial update on startup
-    setInterval(updateItemPrices, 300000); // Subsequent updates every 5 minutes
+    logToFileAndConsole(`Logged in as ${client.user.tag}!`);
 });
 
 const items = {
-    1: { name: "Power", priceR1: 0, priceR2: 0 },
-    2: { name: "Water", priceR1: 0, priceR2: 0 },
-    3: { name: "Apple", priceR1: 0, priceR2: 0 },
-    4: { name: "Orange", priceR1: 0, priceR2: 0 },
-    5: { name: "Grape", priceR1: 0, priceR2: 0 },
-    6: { name: "Grain", priceR1: 0, priceR2: 0 },
-    7: { name: "Steak", priceR1: 0, priceR2: 0 },
-    8: { name: "Sausage", priceR1: 0, priceR2: 0 },
-    9: { name: "Egg", priceR1: 0, priceR2: 0 },
-    10: { name: "Crude oil", priceR1: 0, priceR2: 0 },
-    11: { name: "Petrol", priceR1: 0, priceR2: 0 },
-    12: { name: "Diesel", priceR1: 0, priceR2: 0 },
-    13: { name: "Transport", priceR1: 0, priceR2: 0 },
-    14: { name: "Mineral", priceR1: 0, priceR2: 0 },
-    15: { name: "Bauxite", priceR1: 0, priceR2: 0 },
-    16: { name: "Silicon", priceR1: 0, priceR2: 0 },
-    17: { name: "Chemical", priceR1: 0, priceR2: 0 },
-    18: { name: "Aluminium", priceR1: 0, priceR2: 0 },
-    19: { name: "Plastic", priceR1: 0, priceR2: 0 },
-    20: { name: "Processor", priceR1: 0, priceR2: 0 },
-    21: { name: "Electronic component", priceR1: 0, priceR2: 0 },
-    22: { name: "Battery", priceR1: 0, priceR2: 0 },
-    23: { name: "Display", priceR1: 0, priceR2: 0 },
-    24: { name: "Smart phone", priceR1: 0, priceR2: 0 },
-    25: { name: "Tablet", priceR1: 0, priceR2: 0 },
-    26: { name: "Laptop", priceR1: 0, priceR2: 0 },
-    27: { name: "Monitor", priceR1: 0, priceR2: 0 },
-    28: { name: "Television", priceR1: 0, priceR2: 0 },
-    29: { name: "Plant research", priceR1: 0, priceR2: 0 },
-    30: { name: "Energy research", priceR1: 0, priceR2: 0 },
-    31: { name: "Mining research", priceR1: 0, priceR2: 0 },
-    32: { name: "Electronics research", priceR1: 0, priceR2: 0 },
-    33: { name: "Breeding research", priceR1: 0, priceR2: 0 },
-    34: { name: "Chemistry research", priceR1: 0, priceR2: 0 },
-    35: { name: "Software", priceR1: 0, priceR2: 0 },
-    40: { name: "Cotton", priceR1: 0, priceR2: 0 },
-    41: { name: "Fabric", priceR1: 0, priceR2: 0 },
-    42: { name: "Iron ore", priceR1: 0, priceR2: 0 },
-    43: { name: "Steel", priceR1: 0, priceR2: 0 },
-    44: { name: "Sand", priceR1: 0, priceR2: 0 },
-    45: { name: "Glass", priceR1: 0, priceR2: 0 },
-    46: { name: "Leather", priceR1: 0, priceR2: 0 },
-    47: { name: "On-board computer", priceR1: 0, priceR2: 0 },
-    48: { name: "Electric motor", priceR1: 0, priceR2: 0 },
-    49: { name: "Luxury car interior", priceR1: 0, priceR2: 0 },
-    50: { name: "Basic interior", priceR1: 0, priceR2: 0 },
-    51: { name: "Car body", priceR1: 0, priceR2: 0 },
-    52: { name: "Combustion engine", priceR1: 0, priceR2: 0 },
-    53: { name: "Economy e-car", priceR1: 0, priceR2: 0 },
-    54: { name: "Luxury e-car", priceR1: 0, priceR2: 0 },
-    55: { name: "Economy car", priceR1: 0, priceR2: 0 },
-    56: { name: "Luxury car", priceR1: 0, priceR2: 0 },
-    57: { name: "Truck", priceR1: 0, priceR2: 0 },
-    58: { name: "Automotive research", priceR1: 0, priceR2: 0 },
-    59: { name: "Fashion research", priceR1: 0, priceR2: 0 },
-    60: { name: "Underwear", priceR1: 0, priceR2: 0 },
-    61: { name: "Glove", priceR1: 0, priceR2: 0 },
-    62: { name: "Dress", priceR1: 0, priceR2: 0 },
-    63: { name: "Stiletto Heel", priceR1: 0, priceR2: 0 },
-    64: { name: "Handbag", priceR1: 0, priceR2: 0 },
-    65: { name: "Sneaker", priceR1: 0, priceR2: 0 },
-    66: { name: "Seed", priceR1: 0, priceR2: 0 },
-    67: { name: "Xmas cracker", priceR1: 0, priceR2: 0 },
-    68: { name: "Gold ore", priceR1: 0, priceR2: 0 },
-    69: { name: "Golden bar", priceR1: 0, priceR2: 0 },
-    70: { name: "Luxury watch", priceR1: 0, priceR2: 0 },
-    71: { name: "Necklace", priceR1: 0, priceR2: 0 },
-    72: { name: "Sugarcane", priceR1: 0, priceR2: 0 },
-    73: { name: "Ethanol", priceR1: 0, priceR2: 0 },
-    74: { name: "Methane", priceR1: 0, priceR2: 0 },
-    75: { name: "Carbon fiber", priceR1: 0, priceR2: 0 },
-    76: { name: "Carbon composite", priceR1: 0, priceR2: 0 },
-    77: { name: "Fuselage", priceR1: 0, priceR2: 0 },
-    78: { name: "Wing", priceR1: 0, priceR2: 0 },
-    79: { name: "High grade e-comp", priceR1: 0, priceR2: 0 },
-    80: { name: "Flight computer", priceR1: 0, priceR2: 0 },
-    81: { name: "Cockpit", priceR1: 0, priceR2: 0 },
-    82: { name: "Attitude control", priceR1: 0, priceR2: 0 },
-    83: { name: "Rocket fuel", priceR1: 0, priceR2: 0 },
-    84: { name: "Propellant tank", priceR1: 0, priceR2: 0 },
-    85: { name: "Solid fuel booster", priceR1: 0, priceR2: 0 },
-    86: { name: "Rocket engine", priceR1: 0, priceR2: 0 },
-    87: { name: "Heat shield", priceR1: 0, priceR2: 0 },
-    88: { name: "Ion drive", priceR1: 0, priceR2: 0 },
-    89: { name: "Jet engine", priceR1: 0, priceR2: 0 },
-    90: { name: "Sub-orbital 2nd stage", priceR1: 0, priceR2: 0 },
-    91: { name: "Sub-orbital rocket", priceR1: 0, priceR2: 0 },
-    92: { name: "Orbital booster", priceR1: 0, priceR2: 0 },
-    93: { name: "Starship", priceR1: 0, priceR2: 0 },
-    94: { name: "BFR", priceR1: 0, priceR2: 0 },
-    95: { name: "Jumbo jet", priceR1: 0, priceR2: 0 },
-    96: { name: "Luxury jet", priceR1: 0, priceR2: 0 },
-    97: { name: "Single engine plane", priceR1: 0, priceR2: 0 },
-    98: { name: "Quadcopter", priceR1: 0, priceR2: 0 },
-    99: { name: "Satellite", priceR1: 0, priceR2: 0 },
-    100: { name: "Aerospace research", priceR1: 0, priceR2: 0 },
-    101: { name: "Reinforced concrete", priceR1: 0, priceR2: 0 },
-    102: { name: "Brick", priceR1: 0, priceR2: 0 },
-    103: { name: "Cement", priceR1: 0, priceR2: 0 },
-    104: { name: "Clay", priceR1: 0, priceR2: 0 },
-    105: { name: "Limestone", priceR1: 0, priceR2: 0 },
-    106: { name: "Wood", priceR1: 0, priceR2: 0 },
-    107: { name: "Steel beam", priceR1: 0, priceR2: 0 },
-    108: { name: "Plank", priceR1: 0, priceR2: 0 },
-    109: { name: "Window", priceR1: 0, priceR2: 0 },
-    110: { name: "Tool", priceR1: 0, priceR2: 0 },
-    111: { name: "Construction unit", priceR1: 0, priceR2: 0 },
-    112: { name: "Bulldozer", priceR1: 0, priceR2: 0 },
-    113: { name: "Materials research", priceR1: 0, priceR2: 0 },
-    114: { name: "Robot", priceR1: 0, priceR2: 0 },
-    115: { name: "Cow", priceR1: 0, priceR2: 0 },
-    116: { name: "Pig", priceR1: 0, priceR2: 0 },
-    117: { name: "Milk", priceR1: 0, priceR2: 0 },
-    118: { name: "Coffee bean", priceR1: 0, priceR2: 0 },
-    119: { name: "Coffee powder", priceR1: 0, priceR2: 0 },
-    120: { name: "Vegetable", priceR1: 0, priceR2: 0 },
-    121: { name: "Bread", priceR1: 0, priceR2: 0 },
-    122: { name: "Cheese", priceR1: 0, priceR2: 0 },
-    123: { name: "Apple pie", priceR1: 0, priceR2: 0 },
-    124: { name: "Orange juice", priceR1: 0, priceR2: 0 },
-    125: { name: "Apple cider", priceR1: 0, priceR2: 0 },
-    126: { name: "Ginger beer", priceR1: 0, priceR2: 0 },
-    127: { name: "Frozen pizza", priceR1: 0, priceR2: 0 },
-    128: { name: "Pasta", priceR1: 0, priceR2: 0 },
-    129: { name: "Hamburger", priceR1: 0, priceR2: 0 },
-    130: { name: "Lasagna", priceR1: 0, priceR2: 0 },
-    131: { name: "Meat ball", priceR1: 0, priceR2: 0 },
-    132: { name: "Cocktail", priceR1: 0, priceR2: 0 },
-    133: { name: "Flour", priceR1: 0, priceR2: 0 },
-    134: { name: "Butter", priceR1: 0, priceR2: 0 },
-    135: { name: "Sugar", priceR1: 0, priceR2: 0 },
-    136: { name: "Cocoa", priceR1: 0, priceR2: 0 },
-    137: { name: "Dough", priceR1: 0, priceR2: 0 },
-    138: { name: "Sauce", priceR1: 0, priceR2: 0 },
-    139: { name: "Fodder", priceR1: 0, priceR2: 0 },
-    140: { name: "Chocolate", priceR1: 0, priceR2: 0 },
-    141: { name: "Vegetable oil", priceR1: 0, priceR2: 0 },
-    142: { name: "Salad", priceR1: 0, priceR2: 0 },
-    143: { name: "Samosa", priceR1: 0, priceR2: 0 },
-    145: { name: "Recipes", priceR1: 0, priceR2: 0 }
+    1: { name: "Power", pricesR1: {}, pricesR2: {} },
+    2: { name: "Water", pricesR1: {}, pricesR2: {} },
+    3: { name: "Apple", pricesR1: {}, pricesR2: {} },
+    4: { name: "Orange", pricesR1: {}, pricesR2: {} },
+    5: { name: "Grape", pricesR1: {}, pricesR2: {} },
+    6: { name: "Grain", pricesR1: {}, pricesR2: {} },
+    7: { name: "Steak", pricesR1: {}, pricesR2: {} },
+    8: { name: "Sausage", pricesR1: {}, pricesR2: {} },
+    9: { name: "Egg", pricesR1: {}, pricesR2: {} },
+    10: { name: "Crude oil", pricesR1: {}, pricesR2: {} },
+    11: { name: "Petrol", pricesR1: {}, pricesR2: {} },
+    12: { name: "Diesel", pricesR1: {}, pricesR2: {} },
+    13: { name: "Transport", pricesR1: {}, pricesR2: {} },
+    14: { name: "Mineral", pricesR1: {}, pricesR2: {} },
+    15: { name: "Bauxite", pricesR1: {}, pricesR2: {} },
+    16: { name: "Silicon", pricesR1: {}, pricesR2: {} },
+    17: { name: "Chemical", pricesR1: {}, pricesR2: {} },
+    18: { name: "Aluminium", pricesR1: {}, pricesR2: {} },
+    19: { name: "Plastic", pricesR1: {}, pricesR2: {} },
+    20: { name: "Processor", pricesR1: {}, pricesR2: {} },
+    21: { name: "Electronic component", pricesR1: {}, pricesR2: {} },
+    22: { name: "Battery", pricesR1: {}, pricesR2: {} },
+    23: { name: "Display", pricesR1: {}, pricesR2: {} },
+    24: { name: "Smart phone", pricesR1: {}, pricesR2: {} },
+    25: { name: "Tablet", pricesR1: {}, pricesR2: {} },
+    26: { name: "Laptop", pricesR1: {}, pricesR2: {} },
+    27: { name: "Monitor", pricesR1: {}, pricesR2: {} },
+    28: { name: "Television", pricesR1: {}, pricesR2: {} },
+    29: { name: "Plant research", pricesR1: {}, pricesR2: {} },
+    30: { name: "Energy research", pricesR1: {}, pricesR2: {} },
+    31: { name: "Mining research", pricesR1: {}, pricesR2: {} },
+    32: { name: "Electronics research", pricesR1: {}, pricesR2: {} },
+    33: { name: "Breeding research", pricesR1: {}, pricesR2: {} },
+    34: { name: "Chemistry research", pricesR1: {}, pricesR2: {} },
+    35: { name: "Software", pricesR1: {}, pricesR2: {} },
+    40: { name: "Cotton", pricesR1: {}, pricesR2: {} },
+    41: { name: "Fabric", pricesR1: {}, pricesR2: {} },
+    42: { name: "Iron ore", pricesR1: {}, pricesR2: {} },
+    43: { name: "Steel", pricesR1: {}, pricesR2: {} },
+    44: { name: "Sand", pricesR1: {}, pricesR2: {} },
+    45: { name: "Glass", pricesR1: {}, pricesR2: {} },
+    46: { name: "Leather", pricesR1: {}, pricesR2: {} },
+    47: { name: "On-board computer", pricesR1: {}, pricesR2: {} },
+    48: { name: "Electric motor", pricesR1: {}, pricesR2: {} },
+    49: { name: "Luxury car interior", pricesR1: {}, pricesR2: {} },
+    50: { name: "Basic interior", pricesR1: {}, pricesR2: {} },
+    51: { name: "Car body", pricesR1: {}, pricesR2: {} },
+    52: { name: "Combustion engine", pricesR1: {}, pricesR2: {} },
+    53: { name: "Economy e-car", pricesR1: {}, pricesR2: {} },
+    54: { name: "Luxury e-car", pricesR1: {}, pricesR2: {} },
+    55: { name: "Economy car", pricesR1: {}, pricesR2: {} },
+    56: { name: "Luxury car", pricesR1: {}, pricesR2: {} },
+    57: { name: "Truck", pricesR1: {}, pricesR2: {} },
+    58: { name: "Automotive research", pricesR1: {}, pricesR2: {} },
+    59: { name: "Fashion research", pricesR1: {}, pricesR2: {} },
+    60: { name: "Underwear", pricesR1: {}, pricesR2: {} },
+    61: { name: "Glove", pricesR1: {}, pricesR2: {} },
+    62: { name: "Dress", pricesR1: {}, pricesR2: {} },
+    63: { name: "Stiletto Heel", pricesR1: {}, pricesR2: {} },
+    64: { name: "Handbag", pricesR1: {}, pricesR2: {} },
+    65: { name: "Sneaker", pricesR1: {}, pricesR2: {} },
+    66: { name: "Seed", pricesR1: {}, pricesR2: {} },
+    67: { name: "Xmas cracker", pricesR1: {}, pricesR2: {} },
+    68: { name: "Gold ore", pricesR1: {}, pricesR2: {} },
+    69: { name: "Golden bar", pricesR1: {}, pricesR2: {} },
+    70: { name: "Luxury watch", pricesR1: {}, pricesR2: {} },
+    71: { name: "Necklace", pricesR1: {}, pricesR2: {} },
+    72: { name: "Sugarcane", pricesR1: {}, pricesR2: {} },
+    73: { name: "Ethanol", pricesR1: {}, pricesR2: {} },
+    74: { name: "Methane", pricesR1: {}, pricesR2: {} },
+    75: { name: "Carbon fiber", pricesR1: {}, pricesR2: {} },
+    76: { name: "Carbon composite", pricesR1: {}, pricesR2: {} },
+    77: { name: "Fuselage", pricesR1: {}, pricesR2: {} },
+    78: { name: "Wing", pricesR1: {}, pricesR2: {} },
+    79: { name: "High grade e-comp", pricesR1: {}, pricesR2: {} },
+    80: { name: "Flight computer", pricesR1: {}, pricesR2: {} },
+    81: { name: "Cockpit", pricesR1: {}, pricesR2: {} },
+    82: { name: "Attitude control", pricesR1: {}, pricesR2: {} },
+    83: { name: "Rocket fuel", pricesR1: {}, pricesR2: {} },
+    84: { name: "Propellant tank", pricesR1: {}, pricesR2: {} },
+    85: { name: "Solid fuel booster", pricesR1: {}, pricesR2: {} },
+    86: { name: "Rocket engine", pricesR1: {}, pricesR2: {} },
+    87: { name: "Heat shield", pricesR1: {}, pricesR2: {} },
+    88: { name: "Ion drive", pricesR1: {}, pricesR2: {} },
+    89: { name: "Jet engine", pricesR1: {}, pricesR2: {} },
+    90: { name: "Sub-orbital 2nd stage", pricesR1: {}, pricesR2: {} },
+    91: { name: "Sub-orbital rocket", pricesR1: {}, pricesR2: {} },
+    92: { name: "Orbital booster", pricesR1: {}, pricesR2: {} },
+    93: { name: "Starship", pricesR1: {}, pricesR2: {} },
+    94: { name: "BFR", pricesR1: {}, pricesR2: {} },
+    95: { name: "Jumbo jet", pricesR1: {}, pricesR2: {} },
+    96: { name: "Luxury jet", pricesR1: {}, pricesR2: {} },
+    97: { name: "Single engine plane", pricesR1: {}, pricesR2: {} },
+    98: { name: "Quadcopter", pricesR1: {}, pricesR2: {} },
+    99: { name: "Satellite", pricesR1: {}, pricesR2: {} },
+    100: { name: "Aerospace research", pricesR1: {}, pricesR2: {} },
+    101: { name: "Reinforced concrete", pricesR1: {}, pricesR2: {} },
+    102: { name: "Brick", pricesR1: {}, pricesR2: {} },
+    103: { name: "Cement", pricesR1: {}, pricesR2: {} },
+    104: { name: "Clay", pricesR1: {}, pricesR2: {} },
+    105: { name: "Limestone", pricesR1: {}, pricesR2: {} },
+    106: { name: "Wood", pricesR1: {}, pricesR2: {} },
+    107: { name: "Steel beam", pricesR1: {}, pricesR2: {} },
+    108: { name: "Plank", pricesR1: {}, pricesR2: {} },
+    109: { name: "Window", pricesR1: {}, pricesR2: {} },
+    110: { name: "Tool", pricesR1: {}, pricesR2: {} },
+    111: { name: "Construction unit", pricesR1: {}, pricesR2: {} },
+    112: { name: "Bulldozer", pricesR1: {}, pricesR2: {} },
+    113: { name: "Materials research", pricesR1: {}, pricesR2: {} },
+    114: { name: "Robot", pricesR1: {}, pricesR2: {} },
+    115: { name: "Cow", pricesR1: {}, pricesR2: {} },
+    116: { name: "Pig", pricesR1: {}, pricesR2: {} },
+    117: { name: "Milk", pricesR1: {}, pricesR2: {} },
+    118: { name: "Coffee bean", pricesR1: {}, pricesR2: {} },
+    119: { name: "Coffee powder", pricesR1: {}, pricesR2: {} },
+    120: { name: "Vegetable", pricesR1: {}, pricesR2: {} },
+    121: { name: "Bread", pricesR1: {}, pricesR2: {} },
+    122: { name: "Cheese", pricesR1: {}, pricesR2: {} },
+    123: { name: "Apple pie", pricesR1: {}, pricesR2: {} },
+    124: { name: "Orange juice", pricesR1: {}, pricesR2: {} },
+    125: { name: "Apple cider", pricesR1: {}, pricesR2: {} },
+    126: { name: "Ginger beer", pricesR1: {}, pricesR2: {} },
+    127: { name: "Frozen pizza", pricesR1: {}, pricesR2: {} },
+    128: { name: "Pasta", pricesR1: {}, pricesR2: {} },
+    129: { name: "Hamburger", pricesR1: {}, pricesR2: {} },
+    130: { name: "Lasagna", pricesR1: {}, pricesR2: {} },
+    131: { name: "Meat ball", pricesR1: {}, pricesR2: {} },
+    132: { name: "Cocktail", pricesR1: {}, pricesR2: {} },
+    133: { name: "Flour", pricesR1: {}, pricesR2: {} },
+    134: { name: "Butter", pricesR1: {}, pricesR2: {} },
+    135: { name: "Sugar", pricesR1: {}, pricesR2: {} },
+    136: { name: "Cocoa", pricesR1: {}, pricesR2: {} },
+    137: { name: "Dough", pricesR1: {}, pricesR2: {} },
+    138: { name: "Sauce", pricesR1: {}, pricesR2: {} },
+    139: { name: "Fodder", pricesR1: {}, pricesR2: {} },
+    140: { name: "Chocolate", pricesR1: {}, pricesR2: {} },
+    141: { name: "Vegetable oil", pricesR1: {}, pricesR2: {} },
+    142: { name: "Salad", pricesR1: {}, pricesR2: {} },
+    143: { name: "Samosa", pricesR1: {}, pricesR2: {} },
+    145: { name: "Recipes", pricesR1: {}, pricesR2: {} }
 };
 
 function normalizeItemName(itemName) {
@@ -226,7 +235,7 @@ function handleMatches(channelId) {
     db.serialize(() => {
         db.run("BEGIN TRANSACTION", (err) => {
             if (err) {
-                console.error(`Error starting transaction: ${err.message}`);
+                logToFileAndConsole(`Error starting transaction: ${err.message}`);
                 return;
             }
 
@@ -243,18 +252,18 @@ function handleMatches(channelId) {
 
             db.all(findMatchesSQL, [channelId, channelId], (err, rows) => {
                 if (err) {
-                    console.error(`Error finding matches: ${err.message}`);
+                    logToFileAndConsole(`Error finding matches: ${err.message}`);
                     db.run("ROLLBACK");
                     return;
                 }
 
                 if (rows.length === 0) {
-                    console.log("No matches found.");
+                    logToFileAndConsole("No matches found.");
                     db.run("COMMIT");
                     return;
                 }
 
-                console.log(`Found ${rows.length} matches, processing...`);
+                logToFileAndConsole(`Found ${rows.length} matches, processing...`);
 
                 // Process only the first match
                 let row = rows[0];
@@ -264,7 +273,7 @@ function handleMatches(channelId) {
                 db.run("UPDATE sales_list SET quantity = quantity - ? WHERE id IN (?, ?)", 
                     [minQuantity, row.sell_id, row.buy_id], function(err) {
                     if (err) {
-                        console.error(`Error updating quantities: ${err.message}`);
+                        logToFileAndConsole(`Error updating quantities: ${err.message}`);
                         db.run("ROLLBACK");
                         return;
                     }
@@ -276,17 +285,17 @@ function handleMatches(channelId) {
 
                     db.run("DELETE FROM sales_list WHERE quantity <= 0", (err) => {
                         if (err) {
-                            console.error(`Error deleting zero quantity entries: ${err.message}`);
+                            logToFileAndConsole(`Error deleting zero quantity entries: ${err.message}`);
                             db.run("ROLLBACK");
                             return;
                         }
                         db.run("COMMIT", (err) => {
                             if (err) {
-                                console.error(`Error committing transaction: ${err.message}`);
+                                logToFileAndConsole(`Error committing transaction: ${err.message}`);
                                 db.run("ROLLBACK");
                                 return;
                             }
-                            console.log("Transaction committed successfully, updating lists.");
+                            logToFileAndConsole("Transaction committed successfully, updating lists.");
                             publishLists(channelId); // Refresh the sales list after successful transaction
                         });
                     });
@@ -296,27 +305,27 @@ function handleMatches(channelId) {
     });
 }
 
-function addEntry(channelId, userId, userName, itemName, quality, quantity, buying, price, priceModifier) {
+function addEntry(channelId, userId, userName, itemName, quality, quantity, buying, price, priceModifier, isFixedPrice) {
     const timestamp = new Date().toISOString();
     const actionType = buying ? 'buy' : 'sell';
-    const formattedPrice = parseFloat(price).toFixed(4);
+    const formattedPrice = isFixedPrice ? price.toFixed(4) : parseFloat(price).toFixed(4);
 
-    console.log(`Adding entry: ${actionType} ${quantity} of ${itemName} at quality ${quality} for $${formattedPrice} by user ${userId}`);
+    logToFileAndConsole(`Adding entry: ${actionType} ${quantity} of ${itemName} at quality ${quality} for $${formattedPrice} by user ${userId}`);
 
     const insertSQL = `
-    INSERT INTO sales_list (channel_id, user_id, username, item_name, quantity, quality, timestamp, action_type, price, price_modifier)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO sales_list (channel_id, user_id, username, item_name, quantity, quality, timestamp, action_type, price, price_modifier, is_fixed_price)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `;
-    db.run(insertSQL, [channelId, userId, userName, itemName, quantity, quality, timestamp, actionType, price, priceModifier], function(err) {
+    db.run(insertSQL, [channelId, userId, userName, itemName, quantity, quality, timestamp, actionType, price, priceModifier, isFixedPrice ? 1 : 0], function(err) {
         if (err) {
-            console.error(`Error inserting into sales_list: ${err.message}`);
+            logToFileAndConsole(`Error inserting into sales_list: ${err.message}`);
             return;
         }
-        console.log(`A new row has been inserted with rowid ${this.lastID}, which should be the new orderNumber`);
+        logToFileAndConsole(`A new row has been inserted with rowid ${this.lastID}, which should be the new orderNumber`);
         // Optionally update the orderNumber based on lastID if necessary
         db.run("UPDATE sales_list SET orderNumber = ? WHERE id = ?", [this.lastID, this.lastID], function(err) {
             if (err) {
-                console.error(`Error updating orderNumber: ${err.message}`);
+                logToFileAndConsole(`Error updating orderNumber: ${err.message}`);
             }
         });
     });
@@ -350,75 +359,96 @@ function sortEntries(list) {
 async function publishLists(channelId) {
     const channel = client.channels.cache.get(channelId);
     if (!channel) {
-        console.error("Channel not found");
+        logToFileAndConsole("Channel not found");
         return;
     }
+    updateListPrices(channelId);
 
-    // Retrieve and display sales list
-    db.all("SELECT orderNumber, item_name, quality, quantity, price, price_modifier, username, action_type FROM sales_list WHERE action_type = 'sell' ORDER BY orderNumber DESC", (err, sellRows) => {
-        if (err) {
-            console.error("Failed to retrieve sales list:", err);
-            channel.send("Failed to retrieve the sales list.");
-            return;
-        }
+    // Retrieve and display sales list for both selling and buying
+    const queries = {
+        sell: "SELECT orderNumber, item_name, quality, quantity, price, price_modifier, username, action_type FROM sales_list WHERE action_type = 'sell' ORDER BY orderNumber DESC",
+        buy: "SELECT orderNumber, item_name, quality, quantity, price, price_modifier, username, action_type FROM sales_list WHERE action_type = 'buy' ORDER BY orderNumber DESC"
+    };
 
-        if (sellRows.length === 0) {
-            channel.send("No sales entries found.");
-        } else {
-            const message = formatSalesList(sellRows, "For Sale");
-            sendChunkedMessages(channel, message);
-        }
-    });
-
-    // Retrieve and display buy list
-    db.all("SELECT orderNumber, item_name, quality, quantity, price, price_modifier, username, action_type FROM sales_list WHERE action_type = 'buy' ORDER BY orderNumber DESC", (err, buyRows) => {
-        if (err) {
-            console.error("Failed to retrieve buy list:", err);
-            channel.send("Failed to retrieve the buy list.");
-            return;
-        }
-
-        if (buyRows.length === 0) {
-            channel.send("No buy entries found.");
-        } else {
-            const message = formatSalesList(buyRows, "Want to Buy");
-            sendChunkedMessages(channel, message);
-        }
-    });
-}
-function formatSalesList(rows, listType) {
-    const maxOrderWidth = Math.max(...rows.map(row => row.orderNumber.toString().length), "Order".length) + 2;
-    const maxItemWidth = Math.max(...rows.map(row => row.item_name.length), "Item".length) + 2;
-    const maxQualityWidth = Math.max(...rows.map(row => row.quality.toString().length), "Quality".length) + 2;
-    const maxQuantityWidth = Math.max(...rows.map(row => row.quantity.toString().length), "Quantity".length) + 2;
-    const maxPriceWidth = Math.max(...rows.map(row => `$${parseFloat(row.price).toFixed(4)} (${row.price_modifier})`.length), "Price (MP +/-)".length) + 2;
-    const maxSellerWidth = Math.max(...rows.map(row => row.username.length), "Seller".length) + 2;
-
-    let message = `\`\`\`${listType}:\n`;
-    message += "+-" + "-".repeat(maxOrderWidth) + "+-" + "-".repeat(maxItemWidth) + "+-" + "-".repeat(maxQualityWidth) + "+-" + "-".repeat(maxQuantityWidth) + "+-" + "-".repeat(maxPriceWidth) + "+-" + "-".repeat(maxSellerWidth) + "+\n";
-    message += "| " + "Order".padEnd(maxOrderWidth) + "| " + "Item".padEnd(maxItemWidth) + "| " + "Quality".padEnd(maxQualityWidth) + "| " + "Quantity".padEnd(maxQuantityWidth) + "| " + "Price (MP +/-)".padEnd(maxPriceWidth) + "| " + "Seller".padEnd(maxSellerWidth) + "|\n";
-    message += "+-" + "-".repeat(maxOrderWidth) + "+-" + "-".repeat(maxItemWidth) + "+-" + "-".repeat(maxQualityWidth) + "+-" + "-".repeat(maxQuantityWidth) + "+-" + "-".repeat(maxPriceWidth) + "+-" + "-".repeat(maxSellerWidth) + "+\n";
-
-    rows.forEach(row => {
-        const priceWithModifier = `$${parseFloat(row.price).toFixed(4)} (${row.price_modifier})`;
-        message += "| " + row.orderNumber.toString().padEnd(maxOrderWidth) + "| " + row.item_name.padEnd(maxItemWidth) + "| " + row.quality.toString().padEnd(maxQualityWidth) + "| " + row.quantity.toString().padEnd(maxQuantityWidth) + "| " + priceWithModifier.padEnd(maxPriceWidth) + "| " + row.username.padEnd(maxSellerWidth) + "|\n";
-    });
-
-    message += "+-" + "-".repeat(maxOrderWidth) + "+-" + "-".repeat(maxItemWidth) + "+-" + "-".repeat(maxQualityWidth) + "+-" + "-".repeat(maxQuantityWidth) + "+-" + "-".repeat(maxPriceWidth) + "+-" + "-".repeat(maxSellerWidth) + "+\`\`\`";
-    return message;
-}
-function sendChunkedMessages(channel, message) {
-    // Split message into chunks of 2000 characters to comply with Discord's message length limit
-    const maxMessageLength = 2000;
-    for (let i = 0; i < message.length; i += maxMessageLength) {
-        const toSend = message.substring(i, Math.min(message.length, i + maxMessageLength));
-        channel.send(toSend);
+    for (const [listType, query] of Object.entries(queries)) {
+        db.all(query, (err, rows) => {
+            if (err) {
+                logToFileAndConsole(`Failed to retrieve ${listType} list:`, err);
+                channel.send(`Failed to retrieve the ${listType} list.`);
+                return;
+            }
+            if (rows.length === 0) {
+                channel.send(`No ${listType} entries found.`);
+            } else {
+                const formattedList = formatSalesList(rows, listType);
+                sendChunkedMessages(channel, formattedList);
+            }
+        });
     }
 }
+
+function formatSalesList(rows, listType) {
+    const header = `${listType.toUpperCase()}ERS LIST`;
+    const headerOrderItem = "Order:Item:Q#";
+    const maxOrderItemWidth = Math.max(...rows.map(row => `${row.orderNumber}:${row.item_name.substring(0, 12)}:Q${row.quality}`.length), headerOrderItem.length);
+    const maxQuantityWidth = Math.max(...rows.map(row => row.quantity.toString().length));
+    const maxPriceWidth = Math.max(...rows.map(row => {
+        const modifierDisplay = row.price_modifier === 0 ? 'MP' : (row.price_modifier > 0 ? `+${row.price_modifier}` : `${row.price_modifier}`);
+        const priceDisplay = row.price === -1 ? `MP (${modifierDisplay})` : `${row.price.toFixed(2)} (${modifierDisplay})`;
+        return priceDisplay.length;
+    }));
+
+    const totalWidth = maxOrderItemWidth + maxQuantityWidth + maxPriceWidth + 10; // 10 for padding and separators
+    let message = `\`\`\`${header.padStart(totalWidth / 2 + header.length / 2)}\n` + "+-" + "-".repeat(maxOrderItemWidth) + "-+-" + "-".repeat(maxQuantityWidth) + "-+-" + "-".repeat(maxPriceWidth) + "-+\n";
+    message += "| " + headerOrderItem.padEnd(maxOrderItemWidth) + " | " + "Qty".padEnd(maxQuantityWidth) + " | " + "Price (MP+/-)".padEnd(maxPriceWidth) + " |\n";
+    message += "+-" + "-".repeat(maxOrderItemWidth) + "-+-" + "-".repeat(maxQuantityWidth) + "-+-" + "-".repeat(maxPriceWidth) + "-+\n";
+    
+    rows.forEach(row => {
+        const orderItemQuality = `${row.orderNumber}:${row.item_name.substring(0, 12)}:Q${row.quality}`;
+        const quantityInThousands = row.quantity;
+        const modifierDisplay = row.price_modifier === 0 ? 'MP' : (row.price_modifier > 0 ? `+${row.price_modifier}` : `${row.price_modifier}`);
+        let formattedPrice = row.price === -1 ? `MP (${modifierDisplay})` : `${row.price.toFixed(2)} (${modifierDisplay})`;
+
+        // Check if the formatted price fits within the max width, if not use scientific notation
+        if (formattedPrice.length > maxPriceWidth) {
+            const scientificPrice = row.price.toExponential(2);
+            formattedPrice = `${scientificPrice} (${modifierDisplay})`;
+        }
+
+        message += "| " + orderItemQuality.padEnd(maxOrderItemWidth) + " | " + quantityInThousands.toString().padEnd(maxQuantityWidth) + " | " + formattedPrice.padEnd(maxPriceWidth) + " |\n";
+    });
+    
+    message += "+-" + "-".repeat(maxOrderItemWidth) + "-+-" + "-".repeat(maxQuantityWidth) + "-+-" + "-".repeat(maxPriceWidth) + "-+\n\`\`\`";
+    return message;
+}
+
+function sendChunkedMessages(channel, message) {
+    // Split message into chunks and send each chunk to avoid message size limits
+    const maxMessageSize = 2000;
+    for (let start = 0; start < message.length; start += maxMessageSize) {
+        const end = start + maxMessageSize;
+        const chunk = message.substring(start, end);
+        channel.send(chunk);
+    }
+}
+
+function formatQuantity(quantity) {
+    const quantityInThousands = quantity / 1000;
+    return `${quantityInThousands.toFixed(1)}k`;
+}
+
+function formatPrice(price, modifier) {
+    const priceInThousands = price / 1000;
+    const formattedPrice = `${priceInThousands.toFixed(1)}k (${modifier})`;
+    return formattedPrice;
+}
+
+
+
 function parseItemDetails(args) {
-    console.log("Parsing item details from args:", args);
+    logToFileAndConsole("Parsing item details from args:", args);
     if (args.length < 3) {
-        console.log("Insufficient arguments provided.");
+        logToFileAndConsole("Insufficient arguments provided.");
         return { quality: null, quantity: null, itemName: null };
     }
 
@@ -427,10 +457,10 @@ function parseItemDetails(args) {
     let quality = parseInt(args[args.length - 3].replace(/^q/, ''));
     let itemNameOrRef = args.slice(0, args.length - 3).join(' ');
 
-    console.log(`Extracted - Quality: ${quality}, Quantity: ${quantity}, ItemNameOrRef: ${itemNameOrRef}, Price Modifier: ${priceModifier}`);
+    logToFileAndConsole(`Extracted - Quality: ${quality}, Quantity: ${quantity}, ItemNameOrRef: ${itemNameOrRef}, Price Modifier: ${priceModifier}`);
 
     if (isNaN(quality) || quality < 0 || quality > 12 || isNaN(quantity)) {
-        console.log("Invalid quality or quantity.");
+        logToFileAndConsole("Invalid quality or quantity.");
         return { quality: null, quantity: null, itemName: null, priceModifier: null };
     }
 
@@ -438,22 +468,22 @@ function parseItemDetails(args) {
     let foundItem;
 
     if (!isNaN(refNumber)) {
-        console.log(`Interpreted as reference number: ${refNumber}`);
+        logToFileAndConsole(`Interpreted as reference number: ${refNumber}`);
         foundItem = items[refNumber];
         if (foundItem) {
-            console.log(`Found item by reference number: ${foundItem.name}`);
+            logToFileAndConsole(`Found item by reference number: ${foundItem.name}`);
             return { quality, quantity, itemName: foundItem.name, priceModifier };
         }
     } else {
-        console.log(`Interpreted as item name: ${itemNameOrRef}`);
+        logToFileAndConsole(`Interpreted as item name: ${itemNameOrRef}`);
         foundItem = Object.values(items).find(item => normalizeItemName(item.name) === normalizeItemName(itemNameOrRef));
         if (foundItem) {
-            console.log(`Found item by name: ${foundItem.name}`);
+            logToFileAndConsole(`Found item by name: ${foundItem.name}`);
             return { quality, quantity, itemName: foundItem.name, priceModifier };
         }
     }
 
-    console.log("Item not found.");
+    logToFileAndConsole("Item not found.");
     return { quality: null, quantity: null, itemName: null, priceModifier: null };
 }
 
@@ -462,11 +492,54 @@ client.on('messageCreate', async (msg) => {
     if (msg.author.bot) return;
 
     const content = msg.content.toLowerCase();
-    console.log("Message received:", content);
-    if (content.startsWith('!help')) {
-        const helpMessage = `
+    const args = msg.content.split(' ').slice(1);
+
+    if (content.startsWith('!showlistbig') || content.startsWith('!showbig') || content.startsWith('!listbig') || content.startsWith('!biglist')) {
+        handleBigListCommand(msg);
+    } else if (content.startsWith('!help')) {
+        handleHelpCommand(msg);
+    } else if (content.startsWith('!edit')) {
+        handleEditCommand(msg, args);
+    } else if (content.startsWith('!sell') || content.startsWith('!buy')) {
+        handleSellBuyCommand(msg, args);
+    } else if (content.startsWith('!showlist') || content.startsWith('!show') || content.startsWith('!list')) {
+        handleShowListCommand(msg);
+    } else if (content.startsWith('!delete')) {
+        handleDeleteCommand(msg, args);
+    } else if (content.startsWith('!clear')) {
+        handleClearCommand(msg);
+    } else if (content.startsWith('!insert')) {
+        handleInsertCommand(msg, args);
+    } else if (content.startsWith('!price')) {
+        handlePriceCommand(msg, args);
+    } else if (content.startsWith('!sell.fixed') || content.startsWith('!buy.fixed')) {
+        handleFixedPriceCommand(msg, args);
+    }
+});
+
+async function handleFixedPriceCommand(msg, args) {
+    const buying = msg.content.startsWith('!buy.fixed');
+    if (args.length < 4) {
+        msg.channel.send(`Please use the format: !${buying ? 'buy.fixed' : 'sell.fixed'} [item name/item reference number] [quality] [quantity] [fixed price]`);
+        return;
+    }
+    const { itemName, quality, quantity } = parseItemDetails(args);
+    if (!itemName) {
+        msg.channel.send("Invalid item name or reference number.");
+        return;
+    }
+    const fixedPrice = parseFloat(args[args.length - 1]);
+    if (isNaN(fixedPrice)) {
+        msg.channel.send("Invalid price format.");
+        return;
+    }
+    addEntry(msg.channel.id, msg.author.id, msg.member ? msg.member.displayName : msg.author.username, itemName, quality, quantity, buying, fixedPrice, 'fixed', true);
+}
+
+function handleHelpCommand(msg) {
+    const helpMessage = `
 \`\`\`**Help - Command Usage Guide**
-!price.[item name/item reference number] - Fetch the current market price for an item.
+!price [item name/item reference number] [item quality]- Fetch the current market price for an item. If a market price cannot be found quality is reduced until it is.
 
 !edit [orderNumber] [itemName] [itemQuality] [itemQuantity] [itemPrice] - Edit an existing order(Only by the user who created the order or Admin).
 
@@ -478,288 +551,424 @@ client.on('messageCreate', async (msg) => {
 
 !delete [orderNumber] - Delete an order by its order number (Only by the user who created the order or Admin).
 \`\`\`
+    `;
+    msg.channel.send(helpMessage);
+}
 
-        `;
-        await msg.channel.send(helpMessage);
-    } else if (content.startsWith('!edit')) {
-        const args = msg.content.split(' ').slice(1);
-        console.log("Edit command args:", args);
-        if (args.length !== 5) {
-            await msg.channel.send("Please use the format: !edit [orderNumber] [itemName] [itemQuality] [itemQuantity] [itemPrice]");
-            return;
-        }
-
-        const [orderNumber, itemName, itemQuality, itemQuantity, itemPrice] = args.map(arg => arg.trim());
-        console.log(`Parsed edit command - OrderNumber: ${orderNumber}, ItemName: ${itemName}, ItemQuality: ${itemQuality}, ItemQuantity: ${itemQuantity}, ItemPrice: ${itemPrice}`);
-        const orderNum = parseInt(orderNumber);
-        console.log(`Editing entry with orderNumber: ${orderNum}`);
-
-        if (isNaN(orderNum)) {
-            await msg.channel.send("Invalid order number.");
-            return;
-        }
-
-        db.get("SELECT * FROM sales_list WHERE orderNumber = ?", [orderNum], async (err, row) => {
-            if (err) {
-                console.error(`Error retrieving entry: ${err.message}`);
-                await msg.channel.send("Error retrieving the entry.");
-                return;
-            }
-
-            console.log("Database query executed. Checking row existence...");
-            if (!row) {
-                await msg.channel.send(`No entry found with order number: ${orderNum}.`);
-                return;
-            }
-
-            console.log(`Entry found: ${JSON.stringify(row)}`);
-            if (row.user_id !== msg.author.id && msg.author.id !== '427318093069418496') {
-                await msg.channel.send("You do not have permission to edit this listing.");
-                return;
-            }
-
-            const updates = {};
-            if (itemName.toLowerCase() !== 'x') updates.item_name = itemName;
-            if (itemQuality.toLowerCase() !== 'x') updates.quality = parseInt(itemQuality);
-            if (itemQuantity.toLowerCase() !== 'x') updates.quantity = parseInt(itemQuantity);
-            if (itemPrice.toLowerCase() !== 'x') updates.price = parseFloat(itemPrice).toFixed(4);
-
-            console.log(`Updates to be made: ${JSON.stringify(updates)}`);
-            if (Object.keys(updates).length === 0) {
-                await msg.channel.send("No updates specified.");
-                return;
-            }
-
-            let updateQuery = "UPDATE sales_list SET ";
-            let queryParams = [];
-            Object.keys(updates).forEach((key, index) => {
-                updateQuery += `${key} = ?`;
-                queryParams.push(updates[key]);
-                if (index < Object.keys(updates).length - 1) updateQuery += ", ";
-            });
-            updateQuery += " WHERE orderNumber = ?";
-            queryParams.push(orderNum);
-
-            console.log(`Final SQL Query: ${updateQuery}`);
-            console.log(`Query Parameters: ${queryParams.join(", ")}`);
-
-            db.run(updateQuery, queryParams, async (err) => {
-                if (err) {
-                    console.error(`Error updating entry: ${err.message}`);
-                    await msg.channel.send("Failed to update the listing.");
-                    return;
-                }
-                console.log("Entry updated successfully.");
-                await msg.channel.send("Listing updated successfully.");
-                publishLists(msg.channel.id); // Refresh and display the updated list
-            });
-        });
-    } else if (content.startsWith('!sell') || content.startsWith('!buy')) {
-        const buying = content.startsWith('!buy');
-        const args = msg.content.split(' ').slice(1);
-
-        if (args.length < 4) {
-            await msg.channel.send(`Please use the format: !${buying ? 'buy' : 'sell'} [item name/item reference number] [quality] [quantity] [price modifier]`);
-            return;
-        }
-
-        const { itemName, quality, quantity, priceModifier } = parseItemDetails(args);
-        if (!itemName) {
-            await msg.channel.send("Invalid item name or reference number.");
-            return;
-        }
-
-        // Assuming `items` is an object where keys are item names or IDs
-        const itemKey = Object.keys(items).find(key => items[key].name.toLowerCase() === itemName.toLowerCase());
-        const item = items[itemKey];
-        if (!item) {
-            await msg.channel.send("Item not found.");
-            return;
-        }
-
-        let finalPrice;
-        if (priceModifier.includes('%')) {
-            const percentage = parseFloat(priceModifier);
-            finalPrice = item.priceR1 * (1 + percentage / 100);
-        } else {
-            const fixedChange = parseFloat(priceModifier);
-            finalPrice = item.priceR1 + fixedChange;
-        }
-
-        console.log(`Item details parsed: Quality=${quality}, Quantity=${quantity}, Price=${finalPrice.toFixed(4)}, ItemName=${itemName}, Modifier=${priceModifier}`);
-
-        addEntry(msg.channel.id, msg.author.id, msg.member ? msg.member.displayName : msg.author.username, itemName, quality, quantity, buying, finalPrice, priceModifier);
-    } else if (['showlist', 'show', 'list'].includes(content.split(' ')[0].slice(1))) {
-        await publishLists(msg.channel.id);
-    } else if (content.startsWith('!clear')) {
-        console.log("Clear command received");
-        // Check if the user is authorized
-        if (msg.author.id !== '427318093069418496') {
-            console.log("Unauthorized user attempted to use !clear");
-            await msg.channel.send("You do not have permission to use this command.");
-            return;
-        }
-
-        // Perform the deletion of all entries for this channel
-        const channelId = msg.channel.id;
-        console.log(`Attempting to clear sales list for channel ID: ${channelId}`);
-        db.run("DELETE FROM sales_list WHERE channel_id = ?", [channelId], function(err) {
-            if (err) {
-                console.error(`Error clearing sales list for channel: ${err.message}`);
-                msg.channel.send("Failed to clear the sales list.");
-                return;
-            }
-            console.log(`Sales list cleared for channel ID: ${channelId}`);
-            msg.channel.send("Sales list has been cleared.");
-        });
-    } else  if (content.startsWith('!insert')) {
-        console.log("Insert command triggered");
-        if (msg.author.id !== '427318093069418496') {
-            console.log("Unauthorized user attempted to use !insert");
-            await msg.channel.send("You do not have permission to use this command.");
-            return;
-        }
-
-        const args = msg.content.split(' ').slice(1);
-        if (args.length !== 5) {
-            console.log("Incorrect number of arguments for !insert");
-            await msg.channel.send("Please use the format: !insert [userid] [referenceNumber] [itemQuality] [itemQuantity] [itemPrice]");
-            return;
-        }
-
-        const [userId, referenceNumber, itemQuality, itemQuantity, itemPrice] = args.map(arg => arg.trim());
-        console.log(`Parsed args for !insert: ${userId}, ${referenceNumber}, ${itemQuality}, ${itemQuantity}, ${itemPrice}`);
-
-        const quality = parseInt(itemQuality);
-        const quantity = parseInt(itemQuantity);
-        const price = parseFloat(itemPrice);
-
-        if (isNaN(quality) || isNaN(quantity) || isNaN(price)) {
-            console.log("Invalid input types for !insert");
-            await msg.channel.send("Invalid input. Please ensure quality, quantity, and price are numbers.");
-            return;
-        }
-
-        // Convert reference number to item name
-        const item = items[parseInt(referenceNumber)];
-        if (!item) {
-            console.log("Invalid reference number for item");
-            await msg.channel.send("Invalid reference number for item.");
-            return;
-        }
-        const itemName = item.name;
-
-        console.log(`Inserting entry on behalf of user ${userId}: ${itemName}, Quality=${quality}, Quantity=${quantity}, Price=${price.toFixed(4)}`);
-        client.users.fetch(userId).then(user => {
-            addEntry(msg.channel.id, userId, user.username, itemName, quality, quantity, false, price);
-        }).catch(error => {
-            console.error("Failed to fetch user:", error);
-            msg.channel.send("Failed to fetch user details.");
-        });
-    } else if (content.startsWith('!delete')) {
-        console.log("Delete command triggered");
-        const args = msg.content.split(' ').slice(1);
-        if (args.length !== 1) {
-            console.log("Incorrect number of arguments for !delete");
-            await msg.channel.send("Please use the format: !delete [orderNumber]");
-            return;
-        }
-
-        const orderNumber = parseInt(args[0]);
-        if (isNaN(orderNumber)) {
-            console.log("Invalid order number provided");
-            await msg.channel.send("Invalid order number.");
-            return;
-        }
-
-        console.log(`Attempting to fetch order with orderNumber: ${orderNumber}`);
-        db.get("SELECT user_id FROM sales_list WHERE orderNumber = ?", [orderNumber], async (err, row) => {
-            if (err) {
-                console.error(`Error fetching order: ${err.message}`);
-                await msg.channel.send("Failed to fetch the order.");
-                return;
-            }
-
-            if (!row) {
-                console.log("No order found with provided orderNumber");
-                await msg.channel.send("Order not found.");
-                return;
-            }
-
-            console.log(`Order found, checking permissions for user ${msg.author.id}`);
-            if (msg.author.id === row.user_id || msg.author.id === '427318093069418496') {
-                console.log(`Deleting order ${orderNumber}`);
-                db.run("DELETE FROM sales_list WHERE orderNumber = ?", [orderNumber], async (err) => {
-                    if (err) {
-                        console.error(`Error deleting order: ${err.message}`);
-                        await msg.channel.send("Failed to delete the order.");
-                        return;
-                    }
-                    console.log(`Order ${orderNumber} deleted successfully.`);
-                    await msg.channel.send(`Order ${orderNumber} has been deleted successfully.`);
-                });
-            } else {
-                console.log("User does not have permission to delete this order");
-                await msg.channel.send("You do not have permission to delete this order.");
-            }
-        });
-    } else if (content.startsWith('!price.all')) {
-        // Existing functionality for !price.all
-        if (msg.author.id !== '427318093069418496') {
-            console.log("Unauthorized user attempted to use !price.all");
-            await msg.channel.send("You do not have permission to use this command.");
-            return;
-        }
-
-        let message = "Current Market Prices:\n";
-        Object.entries(items).forEach(([key, item]) => {
-            message += `${item.name}: Price: $${item.priceR1.toFixed(4)}\n`;
-        });
-        const maxMessageLength = 2000;
-        for (let i = 0; i < message.length; i += maxMessageLength) {
-            const toSend = message.substring(i, Math.min(message.length, i + maxMessageLength));
-            await msg.channel.send(toSend);
-        }
-    } else if (content.startsWith('!price.')) {
-        // New functionality for specific item prices
-        const itemNameOrNumber = content.split('!price.')[1];
-        if (!itemNameOrNumber) {
-            await msg.channel.send("Please specify an item name or number after '!price.'");
-            return;
-        }
-
-        const itemKey = Object.keys(items).find(key => 
-            items[key].name.toLowerCase() === itemNameOrNumber.toLowerCase() ||
-            key === itemNameOrNumber
-        );
-
-        if (!itemKey) {
-            await msg.channel.send("Item not found.");
-            return;
-        }
-
-        const item = items[itemKey];
-        await msg.channel.send(`${item.name}:Price: $${item.priceR1.toFixed(4)}`);
+function handleEditCommand(msg, args) {
+    if (args.length < 5) {
+        msg.channel.send("Please use the format: !edit [orderNumber] [itemName] [itemQuality] [itemQuantity] [itemPrice]");
+        return;
     }
-}); // This is the closing bracket and parenthesis for the client.on('messageCreate', ...) handler
+
+    const orderNumber = args[0];
+    const itemQuality = args[args.length - 3];
+    const itemQuantity = args[args.length - 2];
+    const itemPrice = args[args.length - 1];
+    const itemName = args.slice(1, args.length - 3).join(' ');
+
+    const orderNum = parseInt(orderNumber);
+    if (isNaN(orderNum)) {
+        msg.channel.send("Invalid order number.");
+        return;
+    }
+
+    db.get("SELECT * FROM sales_list WHERE orderNumber = ?", [orderNum], async (err, row) => {
+        if (err) {
+            logToFileAndConsole(`Error retrieving entry: ${err.message}`);
+            msg.channel.send("Error retrieving the entry.");
+            return;
+        }
+
+        if (!row) {
+            msg.channel.send(`No entry found with order number: ${orderNum}.`);
+            return;
+        }
+
+        if (row.user_id !== msg.author.id && msg.author.id !== '427318093069418496') {
+            msg.channel.send("You do not have permission to edit this listing.");
+            return;
+        }
+
+        const updates = {};
+        if (itemName.toLowerCase() !== 'x') updates.item_name = itemName;
+        if (itemQuality.toLowerCase() !== 'x') updates.quality = parseInt(itemQuality);
+        if (itemQuantity.toLowerCase() !== 'x') updates.quantity = parseInt(itemQuantity);
+        if (itemPrice.toLowerCase() !== 'x') updates.price = parseFloat(itemPrice).toFixed(4);
+
+        let updateQuery = "UPDATE sales_list SET ";
+        let queryParams = [];
+        Object.keys(updates).forEach((key, index) => {
+            updateQuery += `${key} = ?`;
+            queryParams.push(updates[key]);
+            if (index < Object.keys(updates).length - 1) updateQuery += ", ";
+        });
+        updateQuery += " WHERE orderNumber = ?";
+        queryParams.push(orderNum);
+
+        db.run(updateQuery, queryParams, async (err) => {
+            if (err) {
+                logToFileAndConsole(`Error updating entry: ${err.message}`);
+                msg.channel.send("Failed to update the listing.");
+                return;
+            }
+            logToFileAndConsole("Entry updated successfully.");
+            msg.channel.send("Listing updated successfully.");
+            publishLists(msg.channel.id); // Refresh and display the updated list
+        });
+    });
+}
+
+
+async function handleSellBuyCommand(msg, args) {
+    const buying = msg.content.startsWith('!buy');
+    if (args.length < 4) {
+        msg.channel.send(`Please use the format: !${buying ? 'buy' : 'sell'} [item name/item reference number] [quality] [quantity] [price modifier]`);
+        return;
+    }
+    const itemQuality = args[args.length - 3];
+    const itemQuantity = args[args.length - 2];
+    const priceModifier = args[args.length - 1];
+    const itemName = args.slice(0, args.length - 3).join(' ');
+
+    const { quality, quantity, itemName: resolvedItemName, priceModifier: resolvedPriceModifier } = parseItemDetails([...itemName.split(' '), itemQuality, itemQuantity, priceModifier]);
+    if (!resolvedItemName) {
+        msg.channel.send("Invalid item name or reference number.");
+        return;
+    }
+
+    // Initialize finalPrice to handle cases where no market price is found
+    let finalPrice = -1; // Default to -1, which will be interpreted as 'MP'
+
+    // Fetch item details and market price
+    const itemKey = Object.keys(items).find(key => items[key].name.toLowerCase() === resolvedItemName.toLowerCase());
+    if (!itemKey) {
+        msg.channel.send("Item not found.");
+        return;
+    }
+
+    const priceInfo = await findLowestPriceForItem(0, itemKey, quality);
+    if (!priceInfo.price) {
+        msg.channel.send("Failed to fetch the latest market price. Adding to list with 'MP' as price.");
+        return;
+    }
+
+    // Calculate final price based on market price and modifier
+    finalPrice = calculateFinalPrice(priceInfo.price, resolvedPriceModifier);
+
+    // Construct the message to send to the channel
+    const responseMessage = `${buying ? 'Buying' : 'Selling'} ${resolvedItemName} at Quality ${quality} for ${quantity} units at ${finalPrice.toFixed(2)}`;
+    msg.channel.send(responseMessage);
+
+    // Add entry to the sales list
+    addEntry(msg.channel.id, msg.author.id, msg.member ? msg.member.displayName : msg.author.username, resolvedItemName, quality, quantity, buying, finalPrice, resolvedPriceModifier, false);
+}
+async function publishBigLists(channelId) {
+    const channel = client.channels.cache.get(channelId);
+    if (!channel) {
+        logToFileAndConsole("Channel not found");
+        return;
+    }
+    updateListPrices(channelId);
+
+    // Retrieve and display sales list for both selling and buying with additional columns
+    const queries = {
+        sell: "SELECT orderNumber, item_name, quality, quantity, price, price_modifier, username, action_type FROM sales_list WHERE action_type = 'sell' ORDER BY orderNumber DESC",
+        buy: "SELECT orderNumber, item_name, quality, quantity, price, price_modifier, username, action_type FROM sales_list WHERE action_type = 'buy' ORDER BY orderNumber DESC"
+    };
+
+    for (const [listType, query] of Object.entries(queries)) {
+        db.all(query, (err, rows) => {
+            if (err) {
+                logToFileAndConsole(`Failed to retrieve ${listType} list:`, err);
+                channel.send(`Failed to retrieve the ${listType} list.`);
+                return;
+            }
+            if (rows.length === 0) {
+                channel.send(`No ${listType} entries found.`);
+            } else {
+                const formattedList = formatBigSalesList(rows, listType);
+                sendChunkedMessages(channel, formattedList);
+            }
+        });
+    }
+}
+
+async function handleBigListCommand(msg) {
+    publishBigLists(msg.channel.id);
+}
+// Function to format the big sales list
+function formatBigSalesList(rows, listType) {
+    const header = `${listType.toUpperCase()} LIST`;
+    const headers = ["Order", "Item", "Quality", "Quantity", "Price (MP +/-)", "Seller"];
+    const columnWidths = {
+        order: Math.max(...rows.map(row => row.orderNumber.toString().length), headers[0].length),
+        item: Math.max(...rows.map(row => row.item_name.length), headers[1].length),
+        quality: Math.max(...rows.map(row => row.quality.toString().length), headers[2].length),
+        quantity: Math.max(...rows.map(row => row.quantity.toString().length), headers[3].length),
+        price: Math.max(...rows.map(row => {
+            const modifierDisplay = row.price_modifier === 0 ? 'MP' : (row.price_modifier > 0 ? `MP +${row.price_modifier}` : `MP ${row.price_modifier}`);
+            return `${row.price.toFixed(2)} (${modifierDisplay})`.length;
+        }), headers[4].length),
+        seller: Math.max(...rows.map(row => row.username.length), headers[5].length)
+    };
+
+    let message = `\`\`\`${header}\n` + "+-" + "-".repeat(columnWidths.order) + "-+-" + "-".repeat(columnWidths.item) + "-+-" + "-".repeat(columnWidths.quality) + "-+-" + "-".repeat(columnWidths.quantity) + "-+-" + "-".repeat(columnWidths.price) + "-+-" + "-".repeat(columnWidths.seller) + "-+\n";
+    message += "| " + headers.map((header, i) => header.padEnd(Object.values(columnWidths)[i])).join(" | ") + " |\n";
+    message += "+-" + "-".repeat(columnWidths.order) + "-+-" + "-".repeat(columnWidths.item) + "-+-" + "-".repeat(columnWidths.quality) + "-+-" + "-".repeat(columnWidths.quantity) + "-+-" + "-".repeat(columnWidths.price) + "-+-" + "-".repeat(columnWidths.seller) + "-+\n";
+
+    rows.forEach(row => {
+        const order = row.orderNumber.toString().padEnd(columnWidths.order);
+        const item = row.item_name.padEnd(columnWidths.item);
+        const quality = row.quality.toString().padEnd(columnWidths.quality);
+        const quantity = row.quantity.toString().padEnd(columnWidths.quantity);
+        const modifierDisplay = row.price_modifier === 0 ? 'MP' : (row.price_modifier > 0 ? `MP +${row.price_modifier}` : `MP ${row.price_modifier}`);
+        const price = `${row.price.toFixed(2)} (${modifierDisplay})`.padEnd(columnWidths.price);
+        const seller = row.username.padEnd(columnWidths.seller);
+        message += "| " + order + " | " + item + " | " + quality + " | " + quantity + " | " + price + " | " + seller + " |\n";
+    });
+    message += "+-" + "-".repeat(columnWidths.order) + "-+-" + "-".repeat(columnWidths.item) + "-+-" + "-".repeat(columnWidths.quality) + "-+-" + "-".repeat(columnWidths.quantity) + "-+-" + "-".repeat(columnWidths.price) + "-+-" + "-".repeat(columnWidths.seller) + "-+\n";
+    message += "```";
+    return message;
+}
+        
+
+function handleShowListCommand(msg) {
+    // Assuming a function that fetches and formats the list of sales
+    publishLists(msg.channel.id);
+}
+
+function handleDeleteCommand(msg, args) {
+    if (args.length !== 1) {
+        msg.channel.send("Please use the format: !delete [orderNumber]");
+        return;
+    }
+    const orderNumber = parseInt(args[0]);
+    if (isNaN(orderNumber)) {
+        msg.channel.send("Invalid order number.");
+        return;
+    }
+    db.get("SELECT user_id FROM sales_list WHERE orderNumber = ?", [orderNumber], async (err, row) => {
+        if (err) {
+            logToFileAndConsole(`Error fetching order: ${err.message}`);
+            msg.channel.send("Failed to fetch the order.");
+            return;
+        }
+        if (!row) {
+            msg.channel.send("Order not found.");
+            return;
+        }
+        if (msg.author.id !== row.user_id && msg.author.id !== '427318093069418496') {
+            msg.channel.send("You do not have permission to delete this order.");
+            return;
+        }
+        db.run("DELETE FROM sales_list WHERE orderNumber = ?", [orderNumber], async (err) => {
+            if (err) {
+                logToFileAndConsole(`Error deleting order: ${err.message}`);
+                msg.channel.send("Failed to delete the order.");
+                return;
+            }
+            logToFileAndConsole(`Order ${orderNumber} deleted successfully.`);
+            msg.channel.send(`Order ${orderNumber} has been deleted successfully.`);
+        });
+    });
+}
+
+function handleClearCommand(msg) {
+    if (msg.author.id !== '427318093069418496') {
+        logToFileAndConsole("Unauthorized user attempted to use !clear");
+        msg.channel.send("You do not have permission to use this command.");
+        return;
+    }
+    const channelId = msg.channel.id;
+    db.run("DELETE FROM sales_list WHERE channel_id = ?", [channelId], function(err) {
+        if (err) {
+            logToFileAndConsole(`Error clearing sales list for channel: ${err.message}`);
+            msg.channel.send("Failed to clear the sales list.");
+            return;
+        }
+        logToFileAndConsole(`Sales list cleared for channel ID: ${channelId}`);
+        msg.channel.send("Sales list has been cleared.");
+    });
+}
+
+function handleInsertCommand(msg, args) {
+    if (msg.author.id !== '427318093069418496') {
+        logToFileAndConsole("Unauthorized user attempted to use !insert");
+        msg.channel.send("You do not have permission to use this command.");
+        return;
+    }
+    if (args.length !== 5) {
+        logToFileAndConsole("Incorrect number of arguments for !insert");
+        msg.channel.send("Please use the format: !insert [userid] [referenceNumber] [itemQuality] [itemQuantity] [itemPrice]");
+        return;
+    }
+    const [userId, referenceNumber, itemQuality, itemQuantity, itemPrice] = args.map(arg => arg.trim());
+    const quality = parseInt(itemQuality);
+    const quantity = parseInt(itemQuantity);
+    const price = parseFloat(itemPrice);
+    if (isNaN(quality) || isNaN(quantity) || isNaN(price)) {
+        logToFileAndConsole("Invalid input types for !insert");
+        msg.channel.send("Invalid input. Please ensure quality, quantity, and price are numbers.");
+        return;
+    }
+    const item = items[parseInt(referenceNumber)];
+    if (!item) {
+        logToFileAndConsole("Invalid reference number for item");
+        msg.channel.send("Invalid reference number for item.");
+        return;
+    }
+    const itemName = item.name;
+    logToFileAndConsole(`Inserting entry on behalf of user ${userId}: ${itemName}, Quality=${quality}, Quantity=${quantity}, Price=${price.toFixed(4)}`);
+    client.users.fetch(userId).then(user => {
+        addEntry(msg.channel.id, userId, user.username, itemName, quality, quantity, false, price);
+        msg.channel.send(`Entry added for ${itemName}, Quality=${quality}, Quantity=${quantity}, Price=${price.toFixed(4)}`);
+    }).catch(error => {
+        console.error("Failed to fetch user:", error);
+        msg.channel.send("Failed to fetch user details.");
+    });
+}
+
+function handlePriceCommand(msg, args) {
+    if (args.length < 2) {
+        msg.channel.send("Please use the format: !price [ItemName/ItemReferenceNumber] [ItemQuality]");
+        return;
+    }
+
+    // Attempt to parse the last argument as quality
+    let quality = parseInt(args[args.length - 1].replace(/^q/i, ''));
+
+    if (isNaN(quality) || quality < 0 || quality > 12) {
+        msg.channel.send("Invalid input for quality. Quality should be between 0 and 12.");
+        return;
+    }
+
+    // The remaining arguments are assumed to be part of the item name
+    let itemNameOrNumber = args.slice(0, args.length - 1).join(' ');
+
+    logToFileAndConsole(`Received item name or number: ${itemNameOrNumber}`);
+
+    let itemId;
+    if (!isNaN(parseInt(itemNameOrNumber))) {
+        itemId = parseInt(itemNameOrNumber); // Directly use the number as an ID
+    } else {
+        const itemKey = Object.keys(items).find(key => items[key].name.toLowerCase() === itemNameOrNumber.toLowerCase());
+        if (itemKey) {
+            itemId = itemKey;  // Use the itemKey directly as the itemId
+        }
+    }
+
+    if (!itemId) {
+        msg.channel.send("Item ID is undefined. Cannot fetch prices.");
+        return;
+    }
+
+    const realmId = 0; // Assuming realmId is always 0 as per current setup
+    findLowestPriceForItem(realmId, itemId, quality).then(priceInfo => {
+        if (!priceInfo.price) {
+            msg.channel.send("No price found for the specified item quality or below.");
+        } else {
+            msg.channel.send(`${items[itemId].name}: Lowest Price: $${priceInfo.price.toFixed(4)} at Quality ${priceInfo.quality}.`);
+        }
+    }).catch(err => {
+        msg.channel.send("Failed to fetch price information.");
+    });
+}
+
+function calculateFinalPrice(basePrice, modifier) {
+    let finalPrice = basePrice;
+    if (modifier.includes('%')) {
+        // If the modifier includes a percentage, calculate the percentage increase or decrease
+        const percentage = parseFloat(modifier.replace('%', ''));
+        finalPrice = basePrice * (1 + percentage / 100);
+    } else {
+        // If the modifier is a direct number, add or subtract it from the base price
+        finalPrice += parseFloat(modifier);
+    }
+    return finalPrice;
+}
 
 client.login(token);
 
 import fetch from 'node-fetch';
 
-async function updateItemPrices() {
+async function findLowestPriceForItem(realmId, itemId, quality) {
+    if (itemId === undefined) {
+        console.error("Item ID is undefined. Cannot fetch prices.");
+        return { price: null, quality: null };
+    }
+
+    const url = `https://www.simcompanies.com/api/v3/market/all/${realmId}/${itemId}`;
     try {
-        const response = await fetch('https://www.simcompanies.com/api/v2/market-ticker/0/2024-05-04T04:14:47.315Z/');
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
-        data.forEach(item => {
-            if (items[item.kind]) {
-                items[item.kind].priceR1 = item.price;
-                console.log(`Updated ${items[item.kind].name} with price: ${item.price}`);
+        // Process data to find the lowest price at the requested quality, reducing quality level if necessary
+        let currentQuality = quality;
+        let lowestPriceEntry = null;
+
+        while (currentQuality >= 0 && !lowestPriceEntry) {
+            const pricesAtCurrentQuality = data.filter(item => item.quality === currentQuality);
+            if (pricesAtCurrentQuality.length > 0) {
+                lowestPriceEntry = pricesAtCurrentQuality.reduce((minEntry, item) => item.price < minEntry.price ? item : minEntry, pricesAtCurrentQuality[0]);
             }
-        });
+            currentQuality--; // Reduce quality level if no price found at current level
+        }
+
+        if (!lowestPriceEntry) {
+            return { price: null, quality: null };
+        }
+        return { price: lowestPriceEntry.price, quality: lowestPriceEntry.quality };
     } catch (error) {
-        console.error('Failed to fetch or update item prices:', error);
+        console.error(`Failed to fetch or find item prices: ${error}`);
+        return { price: null, quality: null };
     }
 }
+async function updateListPrices() {
+    logToFileAndConsole("updateListPrices: Starting to update list prices.");
+    db.all("SELECT * FROM sales_list", async (err, rows) => {
+        if (err) {
+            logToFileAndConsole(`updateListPrices: Error fetching sales list: ${err.message}`);
+            return;
+        }
 
-setInterval(updateItemPrices, 300000); // 300000 milliseconds = 5 minutes
+        logToFileAndConsole(`updateListPrices: Processing ${rows.length} rows from sales list.`);
+        for (const row of rows) {
+            const { item_name, quality, price_modifier, id, is_fixed_price } = row;
+            logToFileAndConsole(`updateListPrices: Processing item ${item_name} with ID ${id}.`);
+            const itemKey = Object.keys(items).find(key => items[key].name.toLowerCase() === item_name.toLowerCase());
+            if (!itemKey) {
+                logToFileAndConsole(`updateListPrices: Item not found in items list: ${item_name}`);
+                continue;
+            }
+
+            logToFileAndConsole(`updateListPrices: Found item key ${itemKey} for item ${item_name}.`);
+            const priceInfo = await findLowestPriceForItem(0, itemKey, quality);
+            if (!priceInfo.price) {
+                logToFileAndConsole(`updateListPrices: No market price found for ${item_name} at quality ${quality}. Retaining previous price.`);
+                continue;
+            }
+
+            let newPrice;
+            if (price_modifier.includes('%')) {
+                const percentage = parseFloat(price_modifier);
+                newPrice = priceInfo.price * (1 + percentage / 100);
+                logToFileAndConsole(`updateListPrices: Calculated new price with percentage modifier: Original price ${priceInfo.price}, Modifier ${percentage}%, New price ${newPrice.toFixed(4)}`);
+            } else {
+                const fixedChange = parseFloat(price_modifier);
+                newPrice = priceInfo.price + fixedChange;
+                logToFileAndConsole(`updateListPrices: Calculated new price with fixed modifier: Original price ${priceInfo.price}, Modifier ${fixedChange}, New price ${newPrice.toFixed(4)}`);
+            }
+
+            db.run("UPDATE sales_list SET price = ? WHERE id = ?", [newPrice.toFixed(4), id], (err) => {
+                if (err) {
+                    logToFileAndConsole(`updateListPrices: Error updating price for ${item_name}: ${err.message}`);
+                    return;
+                }
+                logToFileAndConsole(`updateListPrices: Successfully updated price for ${item_name} to $${newPrice.toFixed(4)}`);
+            });
+        }
+    });
+}
