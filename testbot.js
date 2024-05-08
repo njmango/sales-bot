@@ -1,7 +1,7 @@
 import sqlite3 from 'sqlite3';
 import fs from 'fs';
 
-const logStream = fs.createWriteStream('./live-bot-log.txt', { flags: 'a' });
+const logStream = fs.createWriteStream('./test-bot-log.txt', { flags: 'a' });
 
 function logToFileAndConsole(message) {
     console.log(message);  // Log to console
@@ -74,7 +74,7 @@ const client = new Client({
         GatewayIntentBits.GuildMembers,
     ],
 });
-const token = 'TOKEN HERE';
+const token = 'token';
 
 client.on('ready', () => {
     logToFileAndConsole(`Logged in as ${client.user.tag}!`);
@@ -399,7 +399,7 @@ function formatSalesList(rows, listType) {
     }));
 
     const totalWidth = maxOrderItemWidth + maxQuantityWidth + maxPriceWidth + 10; // 10 for padding and separators
-    let message = `\`\`\`${header.padStart(totalWidth / 2 + header.length / 2)}\n` + "+-" + "-".repeat(maxOrderItemWidth) + "-+-" + "-".repeat(maxQuantityWidth) + "-+-" + "-".repeat(maxPriceWidth) + "-+\n";
+    let message = `${header.padStart(totalWidth / 2 + header.length / 2)}\n` + "+-" + "-".repeat(maxOrderItemWidth) + "-+-" + "-".repeat(maxQuantityWidth) + "-+-" + "-".repeat(maxPriceWidth) + "-+\n";
     message += "| " + headerOrderItem.padEnd(maxOrderItemWidth) + " | " + "Qty".padEnd(maxQuantityWidth) + " | " + "Price (MP+/-)".padEnd(maxPriceWidth) + " |\n";
     message += "+-" + "-".repeat(maxOrderItemWidth) + "-+-" + "-".repeat(maxQuantityWidth) + "-+-" + "-".repeat(maxPriceWidth) + "-+\n";
     
@@ -418,17 +418,24 @@ function formatSalesList(rows, listType) {
         message += "| " + orderItemQuality.padEnd(maxOrderItemWidth) + " | " + quantityInThousands.toString().padEnd(maxQuantityWidth) + " | " + formattedPrice.padEnd(maxPriceWidth) + " |\n";
     });
     
-    message += "+-" + "-".repeat(maxOrderItemWidth) + "-+-" + "-".repeat(maxQuantityWidth) + "-+-" + "-".repeat(maxPriceWidth) + "-+\n\`\`\`";
+    message += "+-" + "-".repeat(maxOrderItemWidth) + "-+-" + "-".repeat(maxQuantityWidth) + "-+-" + "-".repeat(maxPriceWidth) + "-+\n";
     return message;
 }
 
 function sendChunkedMessages(channel, message) {
     // Split message into chunks and send each chunk to avoid message size limits
-    const maxMessageSize = 2000;
-    for (let start = 0; start < message.length; start += maxMessageSize) {
-        const end = start + maxMessageSize;
+    const maxMessageSize = 2000 - 6; // Adjusting for the extra characters from the code block markdown
+    let start = 0;
+    while (start < message.length) {
+        let end = start + maxMessageSize;
+        if (end < message.length && message[end] !== '\n') {
+            // Ensure we end at the beginning of a new line if not at the end of the message
+            let newlineIndex = message.lastIndexOf('\n', end);
+            end = newlineIndex === -1 ? end : newlineIndex + 1;
+        }
         const chunk = message.substring(start, end);
-        channel.send(chunk);
+        channel.send(`\`\`\`${chunk}\`\`\``);
+        start = end;
     }
 }
 
@@ -496,6 +503,8 @@ client.on('messageCreate', async (msg) => {
 
     if (content.startsWith('!showlistbig') || content.startsWith('!showbig') || content.startsWith('!listbig') || content.startsWith('!biglist')) {
         handleBigListCommand(msg);
+    } else if (content.startsWith('!helpc')) {
+        handleHelpCommandCompact(msg);
     } else if (content.startsWith('!help')) {
         handleHelpCommand(msg);
     } else if (content.startsWith('!edit')) {
@@ -538,22 +547,130 @@ async function handleFixedPriceCommand(msg, args) {
 
 function handleHelpCommand(msg) {
     const helpMessage = `
-\`\`\`**Help - Command Usage Guide**
-!price [item name/item reference number] [item quality]- Fetch the current market price for an item. If a market price cannot be found quality is reduced until it is.
-
-!edit [orderNumber] [itemName] [itemQuality] [itemQuantity] [itemPrice] - Edit an existing order(Only by the user who created the order or Admin).
-
-!sell [item name/item reference number] [quality] [quantity] [price modifier] - List an item for sale with a price relative to the market price this may be a % or a flat amount.
-
-!buy [item name/item reference number] [quality] [quantity] [price modifier] - List a buy order for an item with a price relative to the market price this may be a % or a flat amount.
-
-!showlist, !show, !list - Display all current buy and sell orders.
-
-!delete [orderNumber] - Delete an order by its order number (Only by the user who created the order or Admin).
-\`\`\`
-    `;
-    msg.channel.send(helpMessage);
++----------------------+------------------------------------------------------------------------------------------------+
+| Command              | Usage                                                                                          |
++----------------------+------------------------------------------------------------------------------------------------+
+| !showlistbig         | Display a detailed list of all current buy and sell orders in desktop format, has all info     |
+| !showbig             | Alias for !showlistbig                                                                         |
+| !listbig             | Alias for !showlistbig                                                                         |
+| !biglist             | Alias for !showlistbig                                                                         |
+| !help                | Display this help message.                                                                     |
+| !helpc               | Display a compact version of this help message.                                                |
+| !edit                | Edit an order: !edit [orderNumber] [itemName] [itemQuality] [itemQuantity] [itemPrice]         |
+| !sell                | List an item for sale: !sell [item name/ref] [quality] [quantity] [price modifier]             |
+| !buy                 | List a buy order: !buy [item name/ref] [quality] [quantity] [price modifier]                   |
+| !showlist            | Display all current buy and sell orders in mobile format                                       |
+| !show                | Alias for !showlist                                                                            |
+| !list                | Alias for !showlist                                                                            |
+| !delete              | Delete an order: !delete [orderNumber]                                                         |
+| !clear               | Clear all orders from the sales list (Admin only).                                             |
+| !insert              | Insert a new item: !insert [item name] [quality] [quantity] [price] [action_type]              |
+| !price               | Fetch market price: !price [item name/ref] [item quality]                                      |
+| !sell.fixed          | List an item at fixed price: !sell.fixed [item name/ref] [quality] [quantity] [fixed price]    |
+| !buy.fixed           | List a buy order at fixed price: !buy.fixed [item name/ref] [quality] [quantity] [fixed price] |
++----------------------+------------------------------------------------------------------------------------------------+
+`;
+    sendChunkedMessages(msg.channel, helpMessage);
 }
+function handleHelpCommandCompact(msg) {
+    const helpMessage = `
++----------------------------------+
+| Command      | Usage             |
++----------------------------------+
+| !showlistbig | Display a detailed|
+|              | list of all       |
+|              | current buy and   |
+|              | sell orders in    |
+|              | desktop format,   |
+|              | has the most info |
++----------------------------------+
+| !showbig     | Alias for         |
+|              | !showlistbig      |
++----------------------------------+
+| !listbig     | Alias for         |
+|              | !showlistbig      |
++----------------------------------+
+| !biglist     | Alias for         |
+|              | !showlistbig      |
++----------------------------------+
+| !help        | Display desktop   |
+|              | width help message|
++----------------------------------+
+| !helpc       | Display this help |
+|              | message.          |
++----------------------------------+
+| !edit        | Edit an order:    |
+|              | !edit [orderNumber|
+|              | ] [itemName]      |
+|              | [itemQuality]     |
+|              | [itemQuantity]    |
+|              | [itemPrice]       |
++----------------------------------+
+| !sell        | List an item for  |
+|              | sale: !sell       |
+|              | [item name/ref]   |
+|              | [quality]         |
+|              | [quantity]        |
+|              | [price modifier]  |
++----------------------------------+
+| !buy         | List a buy order: |
+|              | !buy [item        |
+|              | name/ref] [quality|
+|              | ] [quantity]      |
+|              | [price modifier]  |
++----------------------------------+
+| !showlist    | Display all       |
+|              | current buy and   |
+|              | sell orders in    |
+|              | mobile format     |
++----------------------------------+
+| !show        | Alias for         |
+|              | !showlist         |
++----------------------------------+
+| !list        | Alias for         |
+|              | !showlist         |
++----------------------------------+
+| !delete      | Delete an order:  |
+|              | !delete           |
+|              | [orderNumber]     |
++----------------------------------+
+| !clear       | Clear all orders  |
+|              | from the sales    |
+|              | list (Admin only).|
++----------------------------------+
+| !insert      | Insert a new item:|
+|              | !insert           |
+|              | [itemname]        |
+|              | [quality]         |
+|              | [quantity]        |
+|              | [price]           |
+|              | [action_type]     |
++----------------------------------+
+| !price       | Fetch market price|
+|              | !price            |
+|              | [item name/ref]   |
+|              | [item quality]    |
++----------------------------------+
+| !sell.fixed  | List an item at   |
+|              | fixed price:      |
+|              | !sell.fixed       |
+|              | [itemname/ref]    |   
+|              | [quality]         |
+|              | [quantity]        |
+|              | [fixed price]     |
++----------------------------------+
+| !buy.fixed   | List a buy order  |
+|              | fixed price:      |
+|              | !sell.fixed       |
+|              | [itemname/ref]    |   
+|              | [quality]         |
+|              | [quantity]        |
+|              | [fixed price]     |
++----------------------------------+
+`;
+    sendChunkedMessages(msg.channel, helpMessage);
+}
+
 
 function handleEditCommand(msg, args) {
     if (args.length < 5) {
@@ -707,13 +824,14 @@ function formatBigSalesList(rows, listType) {
         quality: Math.max(...rows.map(row => row.quality.toString().length), headers[2].length),
         quantity: Math.max(...rows.map(row => row.quantity.toString().length), headers[3].length),
         price: Math.max(...rows.map(row => {
-            const modifierDisplay = row.price_modifier === 0 ? 'MP' : (row.price_modifier > 0 ? `MP +${row.price_modifier}` : `MP ${row.price_modifier}`);
-            return `${row.price.toFixed(2)} (${modifierDisplay})`.length;
+            const modifierDisplay = row.price_modifier === 0 ? '' : (row.price_modifier > 0 ? `+${row.price_modifier}` : `${row.price_modifier}`);
+            const priceDisplay = `${row.price.toFixed(2)} ${modifierDisplay ? `(${modifierDisplay})` : '(MP)'}`;
+            return priceDisplay.length;
         }), headers[4].length),
         seller: Math.max(...rows.map(row => row.username.length), headers[5].length)
     };
 
-    let message = `\`\`\`${header}\n` + "+-" + "-".repeat(columnWidths.order) + "-+-" + "-".repeat(columnWidths.item) + "-+-" + "-".repeat(columnWidths.quality) + "-+-" + "-".repeat(columnWidths.quantity) + "-+-" + "-".repeat(columnWidths.price) + "-+-" + "-".repeat(columnWidths.seller) + "-+\n";
+    let message = `${header}\n` + "+-" + "-".repeat(columnWidths.order) + "-+-" + "-".repeat(columnWidths.item) + "-+-" + "-".repeat(columnWidths.quality) + "-+-" + "-".repeat(columnWidths.quantity) + "-+-" + "-".repeat(columnWidths.price) + "-+-" + "-".repeat(columnWidths.seller) + "-+\n";
     message += "| " + headers.map((header, i) => header.padEnd(Object.values(columnWidths)[i])).join(" | ") + " |\n";
     message += "+-" + "-".repeat(columnWidths.order) + "-+-" + "-".repeat(columnWidths.item) + "-+-" + "-".repeat(columnWidths.quality) + "-+-" + "-".repeat(columnWidths.quantity) + "-+-" + "-".repeat(columnWidths.price) + "-+-" + "-".repeat(columnWidths.seller) + "-+\n";
 
@@ -722,13 +840,14 @@ function formatBigSalesList(rows, listType) {
         const item = row.item_name.padEnd(columnWidths.item);
         const quality = row.quality.toString().padEnd(columnWidths.quality);
         const quantity = row.quantity.toString().padEnd(columnWidths.quantity);
-        const modifierDisplay = row.price_modifier === 0 ? 'MP' : (row.price_modifier > 0 ? `MP +${row.price_modifier}` : `MP ${row.price_modifier}`);
+        const modifierDisplay = row.price_modifier === 0 ? '' : (row.price_modifier > 0 ? `+${row.price_modifier}` : `${row.price_modifier}`);
+        const priceDisplay = `${row.price.toFixed(2)} ${modifierDisplay ? `(${modifierDisplay})` : '(MP)'}`;
         const price = `${row.price.toFixed(2)} (${modifierDisplay})`.padEnd(columnWidths.price);
         const seller = row.username.padEnd(columnWidths.seller);
         message += "| " + order + " | " + item + " | " + quality + " | " + quantity + " | " + price + " | " + seller + " |\n";
     });
     message += "+-" + "-".repeat(columnWidths.order) + "-+-" + "-".repeat(columnWidths.item) + "-+-" + "-".repeat(columnWidths.quality) + "-+-" + "-".repeat(columnWidths.quantity) + "-+-" + "-".repeat(columnWidths.price) + "-+-" + "-".repeat(columnWidths.seller) + "-+\n";
-    message += "```";
+
     return message;
 }
         
