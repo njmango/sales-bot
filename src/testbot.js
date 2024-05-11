@@ -6,6 +6,8 @@ const dotenv = require('dotenv').config()
 const fs = require('fs');
 const { AsciiTable3, AlignmentEnum } = require('ascii-table3'); 
 const path = require('node:path');
+const variables = require('../../vars.json');
+const commandsHelp = variables.commands;
 
 // get the token from dotenv
 const token = process.env.TOKEN;
@@ -303,27 +305,6 @@ const items = {
     143: { name: "Samosa", pricesR1: {}, pricesR2: {} },
     145: { name: "Recipes", pricesR1: {}, pricesR2: {} }
 };
-
-const commandsHelp = [
-    ["!showlistbig", "Display a detailed list of all current buy and sell orders in desktop format, has all info"],
-    ["!showbig", "Alias for !showlistbig"],
-    ["!listbig", "Alias for !showlistbig"],
-    ["!biglist", "Alias for !showlistbig"],
-    ["!help", "Display this help message."],
-    ["!helpc", "Display a compact version of this help message."],
-    ["!edit", "Edit an order: !edit [orderNumber] [itemName] [itemQuality] [itemQuantity] [itemPrice]"],
-    ["!sell", "List an item for sale: !sell [item name/ref] [quality] [quantity] [price modifier]"],
-    ["!buy", "List a buy order: !buy [item name/ref] [quality] [quantity] [price modifier]"],
-    ["!showlist", "Display all current buy and sell orders in mobile format"],
-    ["!show", "Alias for !showlist"],
-    ["!list", "Alias for !showlist"],
-    ["!delete", "Delete an order: !delete [orderNumber]"],
-    ["!clear", "Clear all orders from the sales list (Admin only)."],
-    ["!insert", "Insert a new item: !insert [item name] [quality] [quantity] [price] [action_type]"],
-    ["!price", "Fetch market price: !price [item name/ref] [item quality]"],
-    ["!sell.fixed", "List an item at fixed price: !sell.fixed [item name/ref] [quality] [quantity] [fixed price]"],
-    ["!buy.fixed", "List a buy order at fixed price: !buy.fixed [item name/ref] [quality] [quantity] [fixed price]"]
-]
 
 function normalizeItemName(itemName) {
     itemName = itemName.toLowerCase();
@@ -639,7 +620,7 @@ function handleHelpCommand(msg) {
     table.setHeading('Command', 'Description')
 
     commandsHelp.forEach(command => {
-        table.addRow(command[0], command[1])
+        table.addRow(command.command, command.description)
     });
 
     let helpMessage = table.toString()
@@ -663,7 +644,7 @@ function handleHelpCommandCompact(msg) {
 
     // add each command and description to the table
     commandsHelp.forEach(command => {
-        table.addRow(command[0], command[1])
+        table.addRow(command.command, command.description)
 
         // check if it isn't the last row and add a separator
         if (command !== commandsHelp[commandsHelp.length - 1]) {
