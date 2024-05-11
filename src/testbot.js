@@ -1,16 +1,68 @@
 // import all the requirements at the top for readability
-import { Client, GatewayIntentBits } from 'discord.js';
-import fetch from 'node-fetch';
-import sqlite3 from 'sqlite3';
-import dotenv from 'dotenv';
-import fs from 'fs';
-import { AsciiTable3, AlignmentEnum } from 'ascii-table3'; 
+const { Client, Collection, Events, GatewayIntentBits, REST, Routes } = require('discord.js');
+const fetch = import('node-fetch');
+const sqlite3 = require('sqlite3');
+const dotenv = require('dotenv').config()
+const fs = require('fs');
+const { AsciiTable3, AlignmentEnum } = require('ascii-table3'); 
+const path = require('node:path');
 
-// get the environment variables from the .env file
-dotenv.config();
-const { token } = process.env;
+// get the token from dotenv
+const token = process.env.TOKEN;
 
 const logStream = fs.createWriteStream('./test-bot-log.txt', { flags: 'a' });
+
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMembers,
+    ],
+});
+
+client.commands = new Collection();
+
+const foldersPath = path.join(__dirname, 'commands');
+const commandFolders = fs.readdirSync(foldersPath);
+
+for (const folder of commandFolders) {
+	const commandsPath = path.join(foldersPath, folder);
+	const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+	for (const file of commandFiles) {
+		const filePath = path.join(commandsPath, file);
+		const command = require(filePath);
+		// Set a new item in the Collection with the key as the command name and the value as the exported module
+		if ('data' in command && 'execute' in command) {
+			client.commands.set(command.data.name, command);
+		} else {
+			console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+		}
+	}
+}
+
+client.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+
+	const command = interaction.client.commands.get(interaction.commandName);
+
+	if (!command) {
+		console.error(`No command matching ${interaction.commandName} was found.`);
+		return;
+	}
+
+	try {
+		await command.execute(interaction);
+	} catch (error) {
+		console.error(error);
+		if (interaction.replied || interaction.deferred) {
+			await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+		} else {
+			await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+		}
+	}
+});
+
 
 function logToFileAndConsole(message) {
     console.log(message);  // Log to console
@@ -104,15 +156,6 @@ function initDatabase() {
     // create a table for market orders
 
 }
-
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers,
-    ],
-});
 
 client.on('ready', () => {
     logToFileAndConsole(`Logged in as ${client.user.tag}!`);
@@ -261,7 +304,7 @@ const items = {
     145: { name: "Recipes", pricesR1: {}, pricesR2: {} }
 };
 
-const commands = [
+const commandsHelp = [
     ["!showlistbig", "Display a detailed list of all current buy and sell orders in desktop format, has all info"],
     ["!showbig", "Alias for !showlistbig"],
     ["!listbig", "Alias for !showlistbig"],
@@ -595,7 +638,7 @@ function handleHelpCommand(msg) {
     let table = new AsciiTable3('COMMANDS')
     table.setHeading('Command', 'Description')
 
-    commands.forEach(command => {
+    commandsHelp.forEach(command => {
         table.addRow(command[0], command[1])
     });
 
@@ -619,11 +662,11 @@ function handleHelpCommandCompact(msg) {
     table.setAlignLeft(1);
 
     // add each command and description to the table
-    commands.forEach(command => {
+    commandsHelp.forEach(command => {
         table.addRow(command[0], command[1])
 
         // check if it isn't the last row and add a separator
-        if (command !== commands[commands.length - 1]) {
+        if (command !== commandsHelp[commandsHelp.length - 1]) {
             table.addRow('------------','-------------------')
         }        
     });
