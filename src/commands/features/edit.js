@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const {logToFileAndConsole, getDB, checkAdmin} = require("../../utilities.js");
+const {logToFileAndConsole, getDB, checkAdmin, searchItem} = require("../../utilities.js");
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -35,6 +35,30 @@ function handleEditCommand(interaction) {
     const itemName = interaction.options.getString('new_item_name');
 
     const isAdmin = checkAdmin(interaction.user.id);
+    let resolvedItem = null;
+    let itemKey = null;
+
+    console.log(`itemName: ${itemName}`)
+
+    if (itemName !== null && itemName !== "") {
+
+        // search the item
+        resolvedItem = searchItem(itemName);
+        itemKey = resolvedItem.id;
+
+
+        if (resolvedItem.name == null) {
+            interaction.reply({content: "Item not found.", ephemeral: true});
+            return;
+        } 
+
+        if (resolvedItem.certain == false && resolvedItem.name != null && resolvedItem.similarity < 0.7) {
+            interaction.reply({content: `Item not found, did you mean ${resolvedItem.name}?`, ephemeral: true});
+            return;
+        }
+    }
+
+
     const db = getDB();
 
     db.get("SELECT * FROM sales_list WHERE orderNumber = ?", [orderNum], async (err, row) => {
@@ -55,7 +79,7 @@ function handleEditCommand(interaction) {
         }
 
         const updates = {};
-        if (itemName !== null) updates.item_name = itemName;
+        if (itemName !== null) updates.item_name = resolvedItem.name;
         if (itemQuality !== null) updates.quality = parseInt(itemQuality);
         if (itemQuantity !== null) updates.quantity = parseInt(itemQuantity);
         if (itemPrice !== null) updates.price = parseFloat(itemPrice).toFixed(4);
