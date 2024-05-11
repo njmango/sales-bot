@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { AsciiTable3 } = require('ascii-table3'); 
-const { sendChunkedMessages, updateListPrices, logToFileAndConsole, openDB   } = require("../../utilities.js");
+const { sendChunkedMessages, updateListPrices, logToFileAndConsole, getDB   } = require("../../utilities.js");
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -24,7 +24,7 @@ async function publishLists(interaction) {
         buy: "SELECT orderNumber, item_name, quality, quantity, price, price_modifier, username, action_type FROM sales_list WHERE action_type = 'buy' ORDER BY orderNumber DESC"
     };
 
-    const db = openDB();
+    const db = getDB();
     channelId = interaction.channel.id;
 
     let first = true;
@@ -66,8 +66,6 @@ async function publishLists(interaction) {
             }
         });
     }
-
-    db.close();
 }
 
 function formatSalesList(rows, listType) {

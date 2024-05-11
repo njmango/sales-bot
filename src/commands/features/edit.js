@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const {logToFileAndConsole, openDB, checkAdmin} = require("../../utilities.js");
+const {logToFileAndConsole, getDB, checkAdmin} = require("../../utilities.js");
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -35,25 +35,22 @@ function handleEditCommand(interaction) {
     const itemName = interaction.options.getString('new_item_name');
 
     const isAdmin = checkAdmin(interaction.user.id);
-    const db = openDB();
+    const db = getDB();
 
     db.get("SELECT * FROM sales_list WHERE orderNumber = ?", [orderNum], async (err, row) => {
         if (err) {
             logToFileAndConsole(`Error retrieving entry: ${err.message}`);
             interaction.reply({content: "Failed to retrieve the entry.", ephemeral: true});
-            db.close();
             return;
         }
 
         if (!row) {
             interaction.reply({content: `No entry found with order number: ${orderNum}.`, ephemeral: true});
-            db.close();
             return;
         }
 
         if (row.user_id !== interaction.user.id && !isAdmin) {
             interaction.reply({content: "You do not have permission to edit this entry.", ephemeral: true});
-            db.close();
             return;
         }
 
@@ -77,12 +74,10 @@ function handleEditCommand(interaction) {
             if (err) {
                 logToFileAndConsole(`Error updating entry: ${err.message}`);
                 interaction.reply({content: "Failed to update the entry.", ephemeral: true});
-                db.close();
                 return;
             }
             logToFileAndConsole("Entry updated successfully.");
             interaction.reply({content: "Entry updated successfully.", ephemeral: true});
         });
     });
-    db.close();
 }

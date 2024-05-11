@@ -10,12 +10,23 @@ module.exports = {
     sendChunkedMessages,
     updateListPrices,
     logToFileAndConsole,
-    openDB,
+    getDB,
     getItems,
     updateItemPrices,
     checkAdmin,
     searchItem,
+    validatePriceModifier,
+    calculateFinalPrice,
+    findLowestPriceForItem,
+    addEntry
 };
+
+const db = new sqlite3.Database('./testsalesData.db', (err) => {
+    if (err) {
+        logToFileAndConsole('Error opening database ' + err.message);
+        return;
+    }
+});
 
 const items = {
     1: { name: "Power", pricesR1: {}, pricesR2: {} },
@@ -169,13 +180,7 @@ function updateItemPrices(itemKey, quality, pricesR1, pricesR2) {
     items[itemKey].pricesR2[quality] = pricesR2;
 }
 
-function openDB() {
-    const db = new sqlite3.Database('./testsalesData.db', (err) => {
-        if (err) {
-            logToFileAndConsole('Error opening database ' + err.message);
-            return;
-        }
-    });
+function getDB() {
     return db;
 }
 
@@ -207,8 +212,6 @@ function sendChunkedMessages(interaction, message, dontReply = false) {
 }
 
 async function updateListPrices() {
-
-    const db = openDB();
 
     logToFileAndConsole("updateListPrices: Starting to update list prices.");
     db.all("SELECT * FROM sales_list", async (err, rows) => {
@@ -248,14 +251,11 @@ async function updateListPrices() {
             db.run("UPDATE sales_list SET price = ? WHERE id = ?", [newPrice.toFixed(4), id], (err) => {
                 if (err) {
                     logToFileAndConsole(`updateListPrices: Error updating price for ${item_name}: ${err.message}`);
-                    db.close();
                     return;
                 }
                 logToFileAndConsole(`updateListPrices: Successfully updated price for ${item_name} to $${newPrice.toFixed(4)}`);
             });
         }
-        
-        db.close();
     });
 
     
@@ -318,18 +318,18 @@ function searchItem(input) {
         foundItem = items[refNumber];
         if (foundItem) {
             logToFileAndConsole(`Found item by reference number: ${foundItem.name}`);
-            return {certain: true, name: foundItem.name};
+            return {certain: true, name: foundItem.name, id: refNumber};
         }
 
         logToFileAndConsole("Item not found.");
-        return {certain: false, name: null};
+        return {certain: false, name: null, id: null};
     } 
 
     logToFileAndConsole(`Interpreted as item name: ${input}`);
     foundItem = Object.values(items).find(item => item.name.toLowerCase() === input.toLowerCase());
     if (foundItem) {
         logToFileAndConsole(`Found item by name: ${foundItem.name}`);
-        return {certain: true, name: foundItem.name};
+        return {certain: true, name: foundItem.name, id: Object.keys(items).find(key => items[key].name === foundItem.name)};
     }
 
     // if no items are found so far, loop through all the items and find the one with the highest similarity
@@ -346,6 +346,185 @@ function searchItem(input) {
 
     if (highestSimilarity > 0.7) {
         logToFileAndConsole(`Best match found: ${bestMatch}`);
-        return {certain: false, name: bestMatch};
+        return {certain: false, name: bestMatch, id: Object.keys(items).find(key => items[key].name === bestMatch)};
     }    
+}
+
+function validatePriceModifier(priceModifier, finalPrice = null) {
+    /*
+    This function validates the price modifier and final price.
+    The price modifier should be a number with an optional % sign.
+    The final price should be a positive number.
+
+    Arguments:
+        priceModifier -- the price modifier to validate
+        finalPrice -- the final price to validate
+
+    Returns:
+        True if the price modifier and final price are valid, False otherwise
+    */
+
+    // remove the % sign if present
+    const priceModifierClean = priceModifier.replace('%', '');
+
+    // ensure the price modifier is a number
+    if (isNaN(priceModifierClean)) {
+        return false;
+    }
+
+    // ensure the final price is positive with a singular exception for -1, this has the potential to be a flaw
+    // as such a different value should be used to represent the market price
+    if (finalPrice < 0 && finalPrice != -1) {
+        return false;
+    }
+}
+
+function calculateFinalPrice(basePrice, modifier) {
+    let finalPrice = basePrice;
+    if (modifier.includes('%')) {
+        // If the modifier includes a percentage, calculate the percentage increase or decrease
+        const percentage = parseFloat(modifier.replace('%', ''));
+        finalPrice = basePrice * (1 + percentage / 100);
+    } else {
+        // If the modifier is a direct number, add or subtract it from the base price
+        finalPrice += parseFloat(modifier);
+    }
+    return finalPrice;
+}
+
+async function findLowestPriceForItem(realmId, itemId, quality) {
+    if (itemId === undefined) {
+        console.error("Item ID is undefined. Cannot fetch prices.");
+        return { price: null, quality: null };
+    }
+
+    const url = `https://www.simcompanies.com/api/v3/market/all/${realmId}/${itemId}`;
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        // Process data to find the lowest price at the requested quality, reducing quality level if necessary
+        let currentQuality = quality;
+        let lowestPriceEntry = null;
+
+        while (currentQuality >= 0 && !lowestPriceEntry) {
+            const pricesAtCurrentQuality = data.filter(item => item.quality === currentQuality);
+            if (pricesAtCurrentQuality.length > 0) {
+                lowestPriceEntry = pricesAtCurrentQuality.reduce((minEntry, item) => item.price < minEntry.price ? item : minEntry, pricesAtCurrentQuality[0]);
+            }
+            currentQuality--; // Reduce quality level if no price found at current level
+        }
+
+        if (!lowestPriceEntry) {
+            return { price: null, quality: null };
+        }
+        return { price: lowestPriceEntry.price, quality: lowestPriceEntry.quality };
+    } catch (error) {
+        console.error(`Failed to fetch or find item prices: ${error}`);
+        return { price: null, quality: null };
+    }
+}
+
+function addEntry(channelId, userId, userName, itemName, quality, quantity, buying, price, priceModifier, isFixedPrice) {
+    const timestamp = new Date().toISOString();
+    const actionType = buying ? 'buy' : 'sell';
+    const formattedPrice = isFixedPrice ? price.toFixed(4) : parseFloat(price).toFixed(4);
+
+    logToFileAndConsole(`Adding entry: ${actionType} ${quantity} of ${itemName} at quality ${quality} for $${formattedPrice} by user ${userId}`);
+
+    const insertSQL = `
+    INSERT INTO sales_list (channel_id, user_id, username, item_name, quantity, quality, timestamp, action_type, price, price_modifier, is_fixed_price)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`;
+    db.run(insertSQL, [channelId, userId, userName, itemName, quantity, quality, timestamp, actionType, price, priceModifier, isFixedPrice ? 1 : 0], function(err) {
+        if (err) {
+            logToFileAndConsole(`Error inserting into sales_list: ${err.message}`);
+            return;
+        }
+        logToFileAndConsole(`A new row has been inserted with rowid ${this.lastID}, which should be the new orderNumber`);
+        // Optionally update the orderNumber based on lastID if necessary
+        db.run("UPDATE sales_list SET orderNumber = ? WHERE id = ?", [this.lastID, this.lastID], function(err) {
+            if (err) {
+                logToFileAndConsole(`Error updating orderNumber: ${err.message}`);
+            }
+        });
+    });
+    handleMatches(channelId);
+}
+
+function handleMatches(channelId) {
+
+    db.serialize(() => {
+        db.run("BEGIN TRANSACTION", (err) => {
+            if (err) {
+                logToFileAndConsole(`Error starting transaction: ${err.message}`);
+                return;
+            }
+
+            // Adjusted SQL query to include price conditions
+            let findMatchesSQL = `
+                SELECT s1.id AS sell_id, s2.id AS buy_id, s1.quantity AS sell_quantity, s2.quantity AS buy_quantity, 
+                       s1.item_name, s1.quality, s1.user_id AS seller_id, s2.user_id AS buyer_id, s1.price AS sell_price, s2.price AS buy_price
+                FROM sales_list s1
+                JOIN sales_list s2 ON s1.item_name = s2.item_name AND s1.quality = s2.quality AND s1.channel_id = s2.channel_id
+                WHERE s1.channel_id = ? AND s2.channel_id = ?
+                  AND ((s1.action_type = 'sell' AND s2.action_type = 'buy' AND s2.price >= s1.price)
+                    OR (s1.action_type = 'buy' AND s2.action_type = 'sell' AND s1.price >= s2.price))
+            `;
+
+            db.all(findMatchesSQL, [channelId, channelId], (err, rows) => {
+                if (err) {
+                    logToFileAndConsole(`Error finding matches: ${err.message}`);
+                    db.run("ROLLBACK");
+                    return;
+                }
+
+                if (rows.length === 0) {
+                    logToFileAndConsole("No matches found.");
+                    db.run("COMMIT");
+                    return;
+                }
+
+                logToFileAndConsole(`Found ${rows.length} matches, processing...`);
+
+                // Process only the first match
+                let row = rows[0];
+                let minQuantity = Math.min(row.sell_quantity, row.buy_quantity);
+                let finalPrice = row.sell_price === row.buy_price ? row.sell_price : (row.sell_id < row.buy_id ? row.sell_price : row.buy_price);
+
+                db.run("UPDATE sales_list SET quantity = quantity - ? WHERE id IN (?, ?)", 
+                    [minQuantity, row.sell_id, row.buy_id], function(err) {
+                    if (err) {
+                        logToFileAndConsole(`Error updating quantities: ${err.message}`);
+                        db.run("ROLLBACK");
+                        return;
+                    }
+
+                    // Send a notification message with price information
+                    client.channels.fetch(channelId).then(channel => {
+                        channel.send(`Match found! <@${row.seller_id}> please send ${minQuantity} units of ${row.item_name} Q:${row.quality} at $${finalPrice.toFixed(4)} to <@${row.buyer_id}>.`);
+                    }).catch(console.error);
+
+                    db.run("DELETE FROM sales_list WHERE quantity <= 0", (err) => {
+                        if (err) {
+                            logToFileAndConsole(`Error deleting zero quantity entries: ${err.message}`);
+                            db.run("ROLLBACK");
+                            return;
+                        }
+                        db.run("COMMIT", (err) => {
+                            if (err) {
+                                logToFileAndConsole(`Error committing transaction: ${err.message}`);
+                                db.run("ROLLBACK");
+                                return;
+                            }
+                            logToFileAndConsole("Transaction committed successfully, updating lists.");
+                            publishLists(channelId); // Refresh the sales list after successful transaction
+                        });
+                    });
+                });
+            });
+        });
+    });
 }

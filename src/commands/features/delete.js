@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const {logToFileAndConsole, openDB, checkAdmin} = require("../../utilities.js");
+const {logToFileAndConsole, getDB, checkAdmin} = require("../../utilities.js");
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -18,7 +18,7 @@ function handleDeleteCommand(interaction) {
 
     const orderNumber = interaction.options.getInteger('order_number');
     const isAdmin = checkAdmin(interaction.user.id);
-    const db = openDB();
+    const db = getDB();
     
     db.get("SELECT user_id FROM sales_list WHERE orderNumber = ?", [orderNumber], async (err, row) => {
         if (err) {
@@ -44,6 +44,4 @@ function handleDeleteCommand(interaction) {
             });
         }
     });
-
-    db.close();
 }
