@@ -69,7 +69,7 @@ async function handleSellCommand(interaction) {
             return;
         }
     } else {
-        finalPrice = parseFloat(priceModifier);
+        finalPrice = priceModifier;
 
         if (validatePriceModifier(priceModifier, finalPrice) == false) {
             interaction.reply({content: "Invalid Price.", ephemeral: true});
@@ -80,7 +80,7 @@ async function handleSellCommand(interaction) {
     }
 
     // Construct the message to send to the channel
-    const responseMessage = `Buying ${resolvedItem.name} at Quality ${quality} for ${quantity} units at ${finalPrice.toFixed(3)}`;
+    const responseMessage = `Buying ${resolvedItem.name} at Quality ${quality} for ${quantity} units at ${finalPrice}`;
     interaction.reply({content: responseMessage, ephemeral: true});
 
     // Add entry to the sales list

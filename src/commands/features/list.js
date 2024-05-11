@@ -112,7 +112,6 @@ function formatBigSalesList(rows, listType) {
         const quality = row.quality.toString();
         const quantity = row.quantity.toString();
         const modifierDisplay = row.price_modifier === 0 ? '' : (row.price_modifier > 0 ? `${row.price_modifier}` : `${row.price_modifier}`);
-        const priceDisplay = `${row.price.toFixed(2)} ${modifierDisplay ? `(${modifierDisplay})` : '(MP)'}`;
         const price = `${row.price.toFixed(2)} (${modifierDisplay})`;
         const seller = row.username;
 
