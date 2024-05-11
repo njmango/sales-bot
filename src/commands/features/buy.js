@@ -1,5 +1,4 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { AsciiTable3 } = require('ascii-table3'); 
 const { searchItem, validatePriceModifier, calculateFinalPrice, findLowestPriceForItem, addEntry  } = require("../../utilities.js");
 
 module.exports = {
