@@ -12,10 +12,10 @@ module.exports = {
             option => option.setName('new_item_name').setDescription('The corrected item').setRequired(false)
         )
         .addIntegerOption(
-            option => option.setName('new_quality').setDescription('The corrected quality').setRequired(false)
+            option => option.setName('new_quality').setDescription('The corrected quality').setRequired(false).setMaxValue(12).setMinValue(0)
         )
         .addIntegerOption(
-            option => option.setName('new_quantity').setDescription('The corrected quantity').setRequired(false)
+            option => option.setName('new_quantity').setDescription('The corrected quantity').setRequired(false).setMinValue(1)
         )
         .addStringOption(
             option => option.setName('new_price').setDescription('The corrected price').setRequired(false)
