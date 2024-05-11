@@ -815,7 +815,14 @@ async function handleBigListCommand(msg) {
 
 // Function to format the big sales list
 function formatBigSalesList(rows, listType) {
-    const headers = ["Order", "Item", "Quality", "Quantity", "Price (MP +/-)", "Seller"];
+
+    const headers = ["Order", "Item", "Quality", "Quantity", "Price (MP +/-)"];
+
+    if (listType === 'sell') {
+        headers.push("Seller");
+    } else {
+        headers.push("Buyer");
+    }
 
     let table = new AsciiTable3(`${listType.toUpperCase()} LIST`);
 
