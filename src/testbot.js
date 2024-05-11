@@ -101,6 +101,8 @@ function initDatabase() {
         logToFileAndConsole("Table 'prices' ensured.");
     });
 
+    // create a table for market orders
+
 }
 
 const client = new Client({
@@ -258,6 +260,27 @@ const items = {
     143: { name: "Samosa", pricesR1: {}, pricesR2: {} },
     145: { name: "Recipes", pricesR1: {}, pricesR2: {} }
 };
+
+const commands = [
+    ["!showlistbig", "Display a detailed list of all current buy and sell orders in desktop format, has all info"],
+    ["!showbig", "Alias for !showlistbig"],
+    ["!listbig", "Alias for !showlistbig"],
+    ["!biglist", "Alias for !showlistbig"],
+    ["!help", "Display this help message."],
+    ["!helpc", "Display a compact version of this help message."],
+    ["!edit", "Edit an order: !edit [orderNumber] [itemName] [itemQuality] [itemQuantity] [itemPrice]"],
+    ["!sell", "List an item for sale: !sell [item name/ref] [quality] [quantity] [price modifier]"],
+    ["!buy", "List a buy order: !buy [item name/ref] [quality] [quantity] [price modifier]"],
+    ["!showlist", "Display all current buy and sell orders in mobile format"],
+    ["!show", "Alias for !showlist"],
+    ["!list", "Alias for !showlist"],
+    ["!delete", "Delete an order: !delete [orderNumber]"],
+    ["!clear", "Clear all orders from the sales list (Admin only)."],
+    ["!insert", "Insert a new item: !insert [item name] [quality] [quantity] [price] [action_type]"],
+    ["!price", "Fetch market price: !price [item name/ref] [item quality]"],
+    ["!sell.fixed", "List an item at fixed price: !sell.fixed [item name/ref] [quality] [quantity] [fixed price]"],
+    ["!buy.fixed", "List a buy order at fixed price: !buy.fixed [item name/ref] [quality] [quantity] [fixed price]"]
+]
 
 function normalizeItemName(itemName) {
     itemName = itemName.toLowerCase();
@@ -568,129 +591,47 @@ async function handleFixedPriceCommand(msg, args) {
 }
 
 function handleHelpCommand(msg) {
-    const helpMessage = `
-+----------------------+------------------------------------------------------------------------------------------------+
-| Command              | Usage                                                                                          |
-+----------------------+------------------------------------------------------------------------------------------------+
-| !showlistbig         | Display a detailed list of all current buy and sell orders in desktop format, has all info     |
-| !showbig             | Alias for !showlistbig                                                                         |
-| !listbig             | Alias for !showlistbig                                                                         |
-| !biglist             | Alias for !showlistbig                                                                         |
-| !help                | Display this help message.                                                                     |
-| !helpc               | Display a compact version of this help message.                                                |
-| !edit                | Edit an order: !edit [orderNumber] [itemName] [itemQuality] [itemQuantity] [itemPrice]         |
-| !sell                | List an item for sale: !sell [item name/ref] [quality] [quantity] [price modifier]             |
-| !buy                 | List a buy order: !buy [item name/ref] [quality] [quantity] [price modifier]                   |
-| !showlist            | Display all current buy and sell orders in mobile format                                       |
-| !show                | Alias for !showlist                                                                            |
-| !list                | Alias for !showlist                                                                            |
-| !delete              | Delete an order: !delete [orderNumber]                                                         |
-| !clear               | Clear all orders from the sales list (Admin only).                                             |
-| !insert              | Insert a new item: !insert [item name] [quality] [quantity] [price] [action_type]              |
-| !price               | Fetch market price: !price [item name/ref] [item quality]                                      |
-| !sell.fixed          | List an item at fixed price: !sell.fixed [item name/ref] [quality] [quantity] [fixed price]    |
-| !buy.fixed           | List a buy order at fixed price: !buy.fixed [item name/ref] [quality] [quantity] [fixed price] |
-+----------------------+------------------------------------------------------------------------------------------------+
-`;
+
+    let table = new AsciiTable3('COMMANDS')
+    table.setHeading('Command', 'Description')
+
+    commands.forEach(command => {
+        table.addRow(command[0], command[1])
+    });
+
+    let helpMessage = table.toString()
+
     sendChunkedMessages(msg.channel, helpMessage);
 }
 function handleHelpCommandCompact(msg) {
-    const helpMessage = `
-+----------------------------------+
-| Command      | Usage             |
-+----------------------------------+
-| !showlistbig | Display a detailed|
-|              | list of all       |
-|              | current buy and   |
-|              | sell orders in    |
-|              | desktop format,   |
-|              | has the most info |
-+----------------------------------+
-| !showbig     | Alias for         |
-|              | !showlistbig      |
-+----------------------------------+
-| !listbig     | Alias for         |
-|              | !showlistbig      |
-+----------------------------------+
-| !biglist     | Alias for         |
-|              | !showlistbig      |
-+----------------------------------+
-| !help        | Display desktop   |
-|              | width help message|
-+----------------------------------+
-| !helpc       | Display this help |
-|              | message.          |
-+----------------------------------+
-| !edit        | Edit an order:    |
-|              | !edit [orderNumber|
-|              | ] [itemName]      |
-|              | [itemQuality]     |
-|              | [itemQuantity]    |
-|              | [itemPrice]       |
-+----------------------------------+
-| !sell        | List an item for  |
-|              | sale: !sell       |
-|              | [item name/ref]   |
-|              | [quality]         |
-|              | [quantity]        |
-|              | [price modifier]  |
-+----------------------------------+
-| !buy         | List a buy order: |
-|              | !buy [item        |
-|              | name/ref] [quality|
-|              | ] [quantity]      |
-|              | [price modifier]  |
-+----------------------------------+
-| !showlist    | Display all       |
-|              | current buy and   |
-|              | sell orders in    |
-|              | mobile format     |
-+----------------------------------+
-| !show        | Alias for         |
-|              | !showlist         |
-+----------------------------------+
-| !list        | Alias for         |
-|              | !showlist         |
-+----------------------------------+
-| !delete      | Delete an order:  |
-|              | !delete           |
-|              | [orderNumber]     |
-+----------------------------------+
-| !clear       | Clear all orders  |
-|              | from the sales    |
-|              | list (Admin only).|
-+----------------------------------+
-| !insert      | Insert a new item:|
-|              | !insert           |
-|              | [itemname]        |
-|              | [quality]         |
-|              | [quantity]        |
-|              | [price]           |
-|              | [action_type]     |
-+----------------------------------+
-| !price       | Fetch market price|
-|              | !price            |
-|              | [item name/ref]   |
-|              | [item quality]    |
-+----------------------------------+
-| !sell.fixed  | List an item at   |
-|              | fixed price:      |
-|              | !sell.fixed       |
-|              | [itemname/ref]    |   
-|              | [quality]         |
-|              | [quantity]        |
-|              | [fixed price]     |
-+----------------------------------+
-| !buy.fixed   | List a buy order  |
-|              | fixed price:      |
-|              | !sell.fixed       |
-|              | [itemname/ref]    |   
-|              | [quality]         |
-|              | [quantity]        |
-|              | [fixed price]     |
-+----------------------------------+
-`;
-    sendChunkedMessages(msg.channel, helpMessage);
+        
+    // create a table with two columns, the description column being a wrapped column with a max width of 21 characters
+    const table = new AsciiTable3()
+    table.setHeading('Command', 'Description')
+    table.setAlignCenter(1)
+    
+
+    // set the width of the description column table.setWidth(2, 21); and wrap the text
+    table.setWrapped(2, true);
+    table.setWidth(2, 21);
+   
+    // left align the first column
+    table.setAlignLeft(1);
+
+    // add each command and description to the table
+    commands.forEach(command => {
+        table.addRow(command[0], command[1])
+
+        // check if it isn't the last row and add a separator
+        if (command !== commands[commands.length - 1]) {
+            table.addRow('------------','-------------------')
+        }        
+    });
+
+    // send the table as a message
+    let message = `${table.toString()}`
+
+    sendChunkedMessages(msg.channel, message);
 }
 
 
