@@ -178,6 +178,7 @@ function openDB() {
 }
 
 function sendChunkedMessages(interaction, message, dontReply = false) {
+
     // Split message into chunks and send each chunk to avoid message size limits
     const maxMessageSize = 2000 - 6; // Adjusting for the extra characters from the code block markdown
     let start = 0;
@@ -199,6 +200,8 @@ function sendChunkedMessages(interaction, message, dontReply = false) {
         }
         start = end;
     }
+
+    return replied;
 }
 
 async function updateListPrices() {
@@ -249,9 +252,11 @@ async function updateListPrices() {
                 logToFileAndConsole(`updateListPrices: Successfully updated price for ${item_name} to $${newPrice.toFixed(4)}`);
             });
         }
+        
+        db.close();
     });
 
-    db.close();
+    
 }
 
 function logToFileAndConsole(message) {

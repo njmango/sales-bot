@@ -25,29 +25,43 @@ async function publishLists(interaction) {
     };
 
     const db = openDB();
+    channelId = interaction.channel.id;
 
     let first = true;
 
     for (const [listType, query] of Object.entries(queries)) {
+        console.log(`Querying ${listType} list...`);
+
         db.all(query, (err, rows) => {
             if (err) {
                 logToFileAndConsole(`Failed to retrieve ${listType} list:`, err);
-                interaction.reply(`Failed to retrieve the ${listType} list.`);
-                db.close();
-                return;
-            }
-            if (rows.length === 0) {
-                interaction.reply(`No ${listType} entries found.`);
+
+                if (!first) {
+                    interaction.channel.send(`Failed to retrieve the ${listType} list.`)
+                } else {
+                    interaction.reply({content: `Failed to retrieve the ${listType} list.`});
+                }
+
+                
+            } else if (rows.length === 0) {
+                if (!first) {
+                    interaction.channel.send(`No ${listType} entries found.`);
+                } else {
+                    interaction.reply({content: `No ${listType} entries found.`});
+                }
             } else {
-
                 let formattedList = '';
-
                 if (interaction.options.getBoolean('compact')) {
                     formattedList = formatSalesList(rows, listType);
                 } else {
                     formattedList = formatBigSalesList(rows, listType);
                 }
-                sendChunkedMessages(interaction, formattedList, !first);
+                console.log(`Sending ${listType} list...`);
+                sendChunkedMessages(
+                    interaction,
+                    formattedList,
+                    !first
+                );
                 first = false;
             }
         });
