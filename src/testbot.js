@@ -72,6 +72,35 @@ function initDatabase() {
         logToFileAndConsole("Table 'channels' ensured.");
     });
 
+    // and an items table
+    db.run(`CREATE TABLE IF NOT EXISTS items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        type INTEGER,
+        cached_time INTEGER
+    )`, (err) => {
+        if (err) {
+            logToFileAndConsole("Create table error: " + err.message);
+            return;
+        }
+        logToFileAndConsole("Table 'items' ensured.");
+    });
+
+    // create a prices table
+    db.run(`CREATE TABLE IF NOT EXISTS prices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_id INTEGER,
+        quality INTEGER,
+        price REAL,
+        cached_time INTEGER
+    )`, (err) => {
+        if (err) {
+            logToFileAndConsole("Create table error: " + err.message);
+            return;
+        }
+        logToFileAndConsole("Table 'prices' ensured.");
+    });
+
 }
 
 const client = new Client({
