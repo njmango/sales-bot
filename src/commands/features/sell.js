@@ -38,7 +38,7 @@ async function handleSellCommand(interaction) {
     const isFixedPrice = interaction.options.getString('price_type') === 'fixed' ? true : false;
 
     // search the item
-    const resolvedItem = await searchItem(itemName);
+    const resolvedItem = searchItem(itemName);
     const itemKey = resolvedItem.id;
 
     if (resolvedItem.name == null) {
@@ -46,7 +46,7 @@ async function handleSellCommand(interaction) {
         return;
     } 
 
-    if (resolvedItem.certain == false) {
+    if (resolvedItem.certain == false && resolvedItem.name != null && resolvedItem.similarity < 0.7) {
         interaction.reply({content: `Item not found, did you mean ${resolvedItem.name}?`, ephemeral: true});
         return;
     }

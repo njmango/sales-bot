@@ -318,18 +318,18 @@ function searchItem(input) {
         foundItem = items[refNumber];
         if (foundItem) {
             logToFileAndConsole(`Found item by reference number: ${foundItem.name}`);
-            return {certain: true, name: foundItem.name, id: refNumber};
+            return {certain: true, name: foundItem.name, id: refNumber, similarity: 0.0};
         }
 
         logToFileAndConsole("Item not found.");
-        return {certain: false, name: null, id: null};
+        return {certain: false, name: null, id: null, similarity: 0.0};
     } 
 
     logToFileAndConsole(`Interpreted as item name: ${input}`);
     foundItem = Object.values(items).find(item => item.name.toLowerCase() === input.toLowerCase());
     if (foundItem) {
         logToFileAndConsole(`Found item by name: ${foundItem.name}`);
-        return {certain: true, name: foundItem.name, id: Object.keys(items).find(key => items[key].name === foundItem.name)};
+        return {certain: true, name: foundItem.name, id: Object.keys(items).find(key => items[key].name === foundItem.name), similarity: 1.0};
     }
 
     // if no items are found so far, loop through all the items and find the one with the highest similarity
@@ -344,10 +344,12 @@ function searchItem(input) {
         }
     }
 
-    if (highestSimilarity > 0.7) {
+    if (highestSimilarity >= 0.7) {
         logToFileAndConsole(`Best match found: ${bestMatch}`);
         return {certain: false, name: bestMatch, id: Object.keys(items).find(key => items[key].name === bestMatch)};
     }    
+
+    return {certain: false, name: bestMatch, id: Object.keys(items).find(key => items[key].name === bestMatch), similarity: highestSimilarity};
 }
 
 function validatePriceModifier(priceModifier = null, finalPrice = null) {
