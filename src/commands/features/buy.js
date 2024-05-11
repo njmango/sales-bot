@@ -33,8 +33,9 @@ module.exports = {
 async function handleSellCommand(interaction) {
     const quality = interaction.options.getInteger('quality');
     const quantity = interaction.options.getInteger('quantity');
-    const priceModifier = interaction.options.getString('price');
+    let priceModifier = interaction.options.getString('price');
     const itemName = interaction.options.getString('item_name');
+    const isFixedPrice = interaction.options.getString('price_type') === 'fixed' ? true : false;
 
     // search the item
     const resolvedItem = await searchItem(itemName);
@@ -59,12 +60,23 @@ async function handleSellCommand(interaction) {
         return;
     }
 
-    // Calculate final price based on market price and modifier
-    finalPrice = calculateFinalPrice(priceInfo.price, priceModifier);
+    if (!isFixedPrice) {
+        // Calculate final price based on market price and modifier
+        finalPrice = calculateFinalPrice(priceInfo.price, priceModifier);
 
-    if (validatePriceModifier(priceModifier, finalPrice) == false) {
-        interaction.reply({content: "Invalid price modifier or final price.", ephemeral: true});
-        return;
+        if (validatePriceModifier(priceModifier, finalPrice) == false) {
+            interaction.reply({content: "Invalid price modifier or final price.", ephemeral: true});
+            return;
+        }
+    } else {
+        finalPrice = parseFloat(priceModifier);
+
+        if (validatePriceModifier(priceModifier, finalPrice) == false) {
+            interaction.reply({content: "Invalid Price.", ephemeral: true});
+            return;
+        }
+
+        priceModifier = 'fixed';
     }
 
     // Construct the message to send to the channel
@@ -72,5 +84,5 @@ async function handleSellCommand(interaction) {
     interaction.reply({content: responseMessage, ephemeral: true});
 
     // Add entry to the sales list
-    addEntry(interaction.channel.id, interaction.user.id, interaction.member ? interaction.user.displayName : interaction.user.username, resolvedItem.name, quality, quantity, true, finalPrice, priceModifier, false);
+    addEntry(interaction.channel.id, interaction.user.id, interaction.member ? interaction.user.displayName : interaction.user.username, resolvedItem.name, quality, quantity, true, finalPrice, priceModifier, isFixedPrice);
 }

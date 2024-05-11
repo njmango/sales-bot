@@ -350,7 +350,7 @@ function searchItem(input) {
     }    
 }
 
-function validatePriceModifier(priceModifier, finalPrice = null) {
+function validatePriceModifier(priceModifier = null, finalPrice = null) {
     /*
     This function validates the price modifier and final price.
     The price modifier should be a number with an optional % sign.
@@ -364,19 +364,33 @@ function validatePriceModifier(priceModifier, finalPrice = null) {
         True if the price modifier and final price are valid, False otherwise
     */
 
-    // remove the % sign if present
-    const priceModifierClean = priceModifier.replace('%', '');
-
-    // ensure the price modifier is a number
-    if (isNaN(priceModifierClean)) {
-        return false;
+    if (priceModifier === null && finalPrice === null) {
+        // raise an error if both price modifier and final price are not provided
+        throw new Error("Price modifier and final price cannot be null at the same time.");
     }
 
-    // ensure the final price is positive with a singular exception for -1, this has the potential to be a flaw
-    // as such a different value should be used to represent the market price
-    if (finalPrice < 0 && finalPrice != -1) {
-        return false;
+    if (priceModifier !== null) {
+        // remove the % sign if present
+        const priceModifierClean = priceModifier.replace('%', '');
+
+        // ensure the price modifier is a number
+        if (isNaN(priceModifierClean)) {
+            return false;
+        }
     }
+
+    if (finalPrice !== null) {
+        // ensure the final price is a number
+        if (isNaN(finalPrice)) {
+            return false;
+        }
+
+        if (finalPrice < 0) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 function calculateFinalPrice(basePrice, modifier) {
