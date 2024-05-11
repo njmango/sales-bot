@@ -42,3 +42,6 @@ This repo is currently in the process of converting all commands over to slash c
 
 ### List Command
 ![image](./img/list%20example.gif)
+
+### Edit Command
+![image](./img/edit%20example.gif)
