@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { checkAdmin, logToFileAndConsole, searchItem, addEntry } = require("../../utilities.js");
+const { checkAdmin, logToFileAndConsole, searchItem, addEntry, validatePriceModifier, calculateFinalPrice, findLowestPriceForItem } = require("../../utilities.js");
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -40,7 +40,7 @@ module.exports = {
 };
 
 
-function handleInsertCommand(interaction) {
+async function handleInsertCommand(interaction) {
 
     if (!checkAdmin(interaction.user.id)) {
         interaction.reply({content: "You do not have permission to use this command.", ephemeral: true});
@@ -76,6 +76,8 @@ function handleInsertCommand(interaction) {
         return;
     }
 
+    const priceInfo = await findLowestPriceForItem(0, resolvedItem.id, quality);
+
     if (!isFixedPrice) {
         // Calculate final price based on market price and modifier
         finalPrice = calculateFinalPrice(priceInfo.price, priceModifier);
@@ -97,9 +99,9 @@ function handleInsertCommand(interaction) {
 
     const itemName = resolvedItem.name;
 
-    logToFileAndConsole(`Inserting entry on behalf of user ${userId}: ${itemName}, Quality=${quality}, Quantity=${quantity}, Price=${price.toFixed(4)}`);
+    logToFileAndConsole(`Inserting entry on behalf of user ${userId}: ${itemName}, Quality=${quality}, Quantity=${quantity}, Price=${finalPrice.toFixed(4)}`);
 
     addEntry(interaction.channel.id, userId, user.username, itemName, quality, quantity, buy, finalPrice, priceModifier, isFixedPrice);
-    interaction.reply({content:`Entry added for ${itemName}, Quality=${quality}, Quantity=${quantity}, Price=${price.toFixed(4)}`, ephemeral: true});
+    interaction.reply({content:`Entry added for ${itemName}, Quality=${quality}, Quantity=${quantity}, Price=${finalPrice.toFixed(4)}`, ephemeral: true});
 
 }
