@@ -18,6 +18,10 @@
         { "command": "!price", "description": "Fetch market price: !price [item name/ref] [item quality]" },
         { "command": "!sell.fixed", "description": "List an item at fixed price: !sell.fixed [item name/ref] [quality] [quantity] [fixed price]" },
         { "command": "!buy.fixed", "description":  "List a buy order at fixed price: !buy.fixed [item name/ref] [quality] [quantity] [fixed price]" }
+    ],
+    "admins" : [
+        "225321172018003968",
+        "427318093069418496"
     ]
 }
 

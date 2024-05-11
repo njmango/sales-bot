@@ -1,5 +1,9 @@
 const fs = require('fs');
 const sqlite3 = require('sqlite3');
+const variables = require('./vars.json');
+
+const admins = variables.admins;
+const logStream = fs.createWriteStream('./test-bot-log.txt', { flags: 'a' });
 
 module.exports = {
     sendChunkedMessages,
@@ -7,7 +11,8 @@ module.exports = {
     logToFileAndConsole,
     openDB,
     getItems,
-    updateItemPrices
+    updateItemPrices,
+    checkAdmin
 };
 
 const items = {
@@ -153,8 +158,6 @@ const items = {
     145: { name: "Recipes", pricesR1: {}, pricesR2: {} }
 };
 
-const logStream = fs.createWriteStream('./test-bot-log.txt', { flags: 'a' });
-
 function getItems() {
     return items;
 }
@@ -288,4 +291,8 @@ async function findLowestPriceForItem(realmId, itemId, quality) {
         console.error(`Failed to fetch or find item prices: ${error}`);
         return { price: null, quality: null };
     }
+}
+
+function checkAdmin(id) {
+    return admins.includes(String(id));
 }
