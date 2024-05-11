@@ -243,6 +243,7 @@ async function updateListPrices() {
             db.run("UPDATE sales_list SET price = ? WHERE id = ?", [newPrice.toFixed(4), id], (err) => {
                 if (err) {
                     logToFileAndConsole(`updateListPrices: Error updating price for ${item_name}: ${err.message}`);
+                    db.close();
                     return;
                 }
                 logToFileAndConsole(`updateListPrices: Successfully updated price for ${item_name} to $${newPrice.toFixed(4)}`);
