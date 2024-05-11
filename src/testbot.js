@@ -23,32 +23,55 @@ const db = new sqlite3.Database('./testsalesData.db', (err) => {
     }
 });
 
+function initDatabase() {
+    db.run(`CREATE TABLE IF NOT EXISTS sales_list (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        orderNumber INTEGER,
+        channel_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        item_name TEXT NOT NULL,
+        quantity INTEGER NOT NULL,
+        quality INTEGER NOT NULL,
+        timestamp TEXT NOT NULL,
+        action_type TEXT NOT NULL,
+        price REAL,
+        price_modifier TEXT,
+        is_fixed_price INTEGER
+    )`, (err) => {
+        if (err) {
+            logToFileAndConsole("Create table error: " + err.message);
+            return;
+        }
+        logToFileAndConsole("Table 'sales_list' ensured.");
+    });
 
-// Ensure the table exists before starting the bot and handling messages
-db.run(`CREATE TABLE IF NOT EXISTS sales_list (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    orderNumber INTEGER,
-    channel_id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    username TEXT NOT NULL,
-    item_name TEXT NOT NULL,
-    quantity INTEGER NOT NULL,
-    quality INTEGER NOT NULL,
-    timestamp TEXT NOT NULL,
-    action_type TEXT NOT NULL,
-    price REAL,
-    price_modifier TEXT,
-    is_fixed_price INTEGER
-)`, (err) => {
-    if (err) {
-        logToFileAndConsole("Create table error: " + err.message);
-        return;
-    }
-    logToFileAndConsole("Table 'sales_list' ensured.");
+    // CREATE A USERS TABLE
+    db.run(`CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        discord_id TEXT,
+        username TEXT,
+        cached_time INTEGER
+    )`, (err) => {
+        if (err) {
+            logToFileAndConsole("Create table error: " + err.message);
+            return;
+        }
+        logToFileAndConsole("Table 'users' ensured.");
+    });
 
-    // Start the bot only after ensuring the table is ready
-    client.login(token);
-});
+    // create a channels table
+    db.run(`CREATE TABLE IF NOT EXISTS channels (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        discord_id TEXT
+    )`, (err) => {
+        if (err) {
+            logToFileAndConsole("Create table error: " + err.message);
+            return;
+        }
+        logToFileAndConsole("Table 'channels' ensured.");
+    });
+
+}
 
 const client = new Client({
     intents: [
@@ -1106,4 +1129,6 @@ async function updateListPrices() {
     });
 }
 
+
+initDatabase();
 client.login(token);
