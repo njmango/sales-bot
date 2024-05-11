@@ -4,6 +4,7 @@ import fetch from 'node-fetch';
 import sqlite3 from 'sqlite3';
 import dotenv from 'dotenv';
 import fs from 'fs';
+import { AsciiTable3, AlignmentEnum } from 'ascii-table3'; 
 
 // get the environment variables from the .env file
 dotenv.config();
@@ -394,21 +395,16 @@ async function publishLists(channelId) {
 }
 
 function formatSalesList(rows, listType) {
-    const header = `${listType.toUpperCase()}ERS LIST`;
-    const headerOrderItem = "Order:Item:Q#";
-    const maxOrderItemWidth = Math.max(...rows.map(row => `${row.orderNumber}:${row.item_name.substring(0, 12)}:Q${row.quality}`.length), headerOrderItem.length);
-    const maxQuantityWidth = Math.max(...rows.map(row => row.quantity.toString().length));
-    const maxPriceWidth = Math.max(...rows.map(row => {
-        const modifierDisplay = row.price_modifier === 0 ? 'MP' : (row.price_modifier > 0 ? `+${row.price_modifier}` : `${row.price_modifier}`);
-        const priceDisplay = row.price === -1 ? `MP (${modifierDisplay})` : `${row.price.toFixed(2)} (${modifierDisplay})`;
-        return priceDisplay.length;
-    }));
 
-    const totalWidth = maxOrderItemWidth + maxQuantityWidth + maxPriceWidth + 10; // 10 for padding and separators
-    let message = `${header.padStart(totalWidth / 2 + header.length / 2)}\n` + "+-" + "-".repeat(maxOrderItemWidth) + "-+-" + "-".repeat(maxQuantityWidth) + "-+-" + "-".repeat(maxPriceWidth) + "-+\n";
-    message += "| " + headerOrderItem.padEnd(maxOrderItemWidth) + " | " + "Qty".padEnd(maxQuantityWidth) + " | " + "Price (MP+/-)".padEnd(maxPriceWidth) + " |\n";
-    message += "+-" + "-".repeat(maxOrderItemWidth) + "-+-" + "-".repeat(maxQuantityWidth) + "-+-" + "-".repeat(maxPriceWidth) + "-+\n";
-    
+
+    console.log("Rows: \n", rows);
+    console.log("\n\n\n")
+
+    let table = new AsciiTable3(`${listType.toUpperCase()}ERS LIST`)
+
+    // add header row
+    table.setHeading('#:Item:Q' , 'Quantity', 'Price');
+
     rows.forEach(row => {
         const orderItemQuality = `${row.orderNumber}:${row.item_name.substring(0, 12)}:Q${row.quality}`;
         const quantityInThousands = row.quantity;
@@ -416,15 +412,16 @@ function formatSalesList(rows, listType) {
         let formattedPrice = row.price === -1 ? `MP (${modifierDisplay})` : `${row.price.toFixed(2)} (${modifierDisplay})`;
 
         // Check if the formatted price fits within the max width, if not use scientific notation
-        if (formattedPrice.length > maxPriceWidth) {
-            const scientificPrice = row.price.toExponential(2);
-            formattedPrice = `${scientificPrice} (${modifierDisplay})`;
-        }
+        // if (formattedPrice.length > maxPriceWidth) {
+        //     const scientificPrice = row.price.toExponential(2);
+        //     formattedPrice = `${scientificPrice} (${modifierDisplay})`;
+        //}
 
-        message += "| " + orderItemQuality.padEnd(maxOrderItemWidth) + " | " + quantityInThousands.toString().padEnd(maxQuantityWidth) + " | " + formattedPrice.padEnd(maxPriceWidth) + " |\n";
+        table.addRow(orderItemQuality, quantityInThousands, formattedPrice)
     });
     
-    message += "+-" + "-".repeat(maxOrderItemWidth) + "-+-" + "-".repeat(maxQuantityWidth) + "-+-" + "-".repeat(maxPriceWidth) + "-+\n";
+    let message = table.toString()
+
     return message;
 }
 
