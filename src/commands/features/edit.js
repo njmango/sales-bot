@@ -29,7 +29,7 @@ module.exports = {
 function handleEditCommand(interaction) {
 
     const orderNum = interaction.options.getInteger('order_number');
-    const itemQuality = interaction.options.getString('new_quality');
+    const itemQuality = interaction.options.getInteger('new_quality');
     const itemQuantity = interaction.options.getInteger('new_quantity');
     const itemPrice = interaction.options.getString('new_price');
     const itemName = interaction.options.getString('new_item_name');
@@ -58,7 +58,7 @@ function handleEditCommand(interaction) {
         }
 
         const updates = {};
-        if (itemName.toLowerCase() !== null) updates.item_name = itemName;
+        if (itemName !== null) updates.item_name = itemName;
         if (itemQuality !== null) updates.quality = parseInt(itemQuality);
         if (itemQuantity !== null) updates.quantity = parseInt(itemQuantity);
         if (itemPrice !== null) updates.price = parseFloat(itemPrice).toFixed(4);
