@@ -4,7 +4,7 @@ const { getDB, checkAdmin, logToFileAndConsole  } = require("../../utilities.js"
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('clear')
-		.setDescription('Drop the orders table'),
+		.setDescription('[Admin] Drop the orders table'),
 	async execute(interaction) {
 		handleClearCommand(interaction);
 	},
