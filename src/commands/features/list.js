@@ -14,7 +14,6 @@ module.exports = {
     }
 };
 
-
 async function publishLists(interaction) {
 
     updateListPrices(interaction.channel);
@@ -39,7 +38,14 @@ async function publishLists(interaction) {
             if (rows.length === 0) {
                 interaction.reply(`No ${listType} entries found.`);
             } else {
-                const formattedList = formatSalesList(rows, listType);
+
+                let formattedList = '';
+
+                if (interaction.options.getBoolean('compact')) {
+                    formattedList = formatSalesList(rows, listType);
+                } else {
+                    formattedList = formatBigSalesList(rows, listType);
+                }
                 sendChunkedMessages(interaction, formattedList, !first);
                 first = false;
             }
@@ -63,6 +69,42 @@ function formatSalesList(rows, listType) {
         let formattedPrice = row.price === -1 ? `MP (${modifierDisplay})` : `${row.price.toFixed(2)} (${modifierDisplay})`;
 
         table.addRow(orderItemQuality, quantityInThousands, formattedPrice)
+    });
+    
+    let message = table.toString()
+
+    return message;
+}
+
+// Function to format the big sales list
+function formatBigSalesList(rows, listType) {
+
+    const headers = ["Order", "Item", "Quality", "Quantity", "Price (MP +/-)"];
+
+    if (listType === 'sell') {
+        headers.push("Seller");
+    } else {
+        headers.push("Buyer");
+    }
+
+    let table = new AsciiTable3(`${listType.toUpperCase()} LIST`);
+
+    // Add header row
+    table.setHeading(...headers);
+
+
+    rows.forEach(row => {
+        const order = row.orderNumber.toString();
+        const item = row.item_name;
+        const quality = row.quality.toString();
+        const quantity = row.quantity.toString();
+        const modifierDisplay = row.price_modifier === 0 ? '' : (row.price_modifier > 0 ? `${row.price_modifier}` : `${row.price_modifier}`);
+        const priceDisplay = `${row.price.toFixed(2)} ${modifierDisplay ? `(${modifierDisplay})` : '(MP)'}`;
+        const price = `${row.price.toFixed(2)} (${modifierDisplay})`;
+        const seller = row.username;
+
+        table.addRow(order, item, quality, quantity, price, seller);
+
     });
     
     let message = table.toString()

@@ -37,4 +37,8 @@ npm run start
 
 This repo is currently in the process of converting all commands over to slash commands as seen below
 
+### Help Command
 ![image](./img/help%20example.gif)
+
+### List Command
+![image](./img/list%20example.gif)
