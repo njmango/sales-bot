@@ -38,8 +38,6 @@ function handleEditCommand(interaction) {
     let resolvedItem = null;
     let itemKey = null;
 
-    console.log(`itemName: ${itemName}`)
-
     if (itemName !== null && itemName !== "") {
 
         // search the item
