@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { AsciiTable3 } = require('ascii-table3'); 
+const { sendChunkedMessages } = require("../../utilities.js");
 
 const variables = require('../../vars.json');
 const commandsHelp = variables.commands;
@@ -64,27 +65,3 @@ module.exports = {
         sendChunkedMessages(interaction, message);
 	},
 };
-
-function sendChunkedMessages(interaction, message) {
-    // Split message into chunks and send each chunk to avoid message size limits
-    const maxMessageSize = 2000 - 6; // Adjusting for the extra characters from the code block markdown
-    let start = 0;
-    let replied = false;
-    while (start < message.length) {
-        let end = start + maxMessageSize;
-        if (end < message.length && message[end] !== '\n') {
-            // Ensure we end at the beginning of a new line if not at the end of the message
-            let newlineIndex = message.lastIndexOf('\n', end);
-            end = newlineIndex === -1 ? end : newlineIndex + 1;
-        }
-        const chunk = message.substring(start, end);
-
-        if (!replied) {
-            interaction.reply(`\`\`\`\n${chunk}\n\`\`\``);
-            replied = true;
-        } else {
-            interaction.channel.send(`\`\`\`\n${chunk}\n\`\`\``);
-        }
-        start = end;
-    }
-}
