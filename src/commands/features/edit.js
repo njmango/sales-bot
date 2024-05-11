@@ -58,10 +58,10 @@ function handleEditCommand(interaction) {
         }
 
         const updates = {};
-        if (itemName.toLowerCase() !== 'x') updates.item_name = itemName;
-        if (itemQuality.toLowerCase() !== 'x') updates.quality = parseInt(itemQuality);
-        if (itemQuantity.toLowerCase() !== 'x') updates.quantity = parseInt(itemQuantity);
-        if (itemPrice.toLowerCase() !== 'x') updates.price = parseFloat(itemPrice).toFixed(4);
+        if (itemName.toLowerCase() !== null) updates.item_name = itemName;
+        if (itemQuality !== null) updates.quality = parseInt(itemQuality);
+        if (itemQuantity !== null) updates.quantity = parseInt(itemQuantity);
+        if (itemPrice !== null) updates.price = parseFloat(itemPrice).toFixed(4);
 
         let updateQuery = "UPDATE sales_list SET ";
         let queryParams = [];
