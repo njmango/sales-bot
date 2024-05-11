@@ -33,6 +33,7 @@ async function publishLists(interaction) {
             if (err) {
                 logToFileAndConsole(`Failed to retrieve ${listType} list:`, err);
                 interaction.reply(`Failed to retrieve the ${listType} list.`);
+                db.close();
                 return;
             }
             if (rows.length === 0) {
@@ -57,7 +58,7 @@ async function publishLists(interaction) {
 
 function formatSalesList(rows, listType) {
 
-    let table = new AsciiTable3(`${listType.toUpperCase()}ERS LIST`)
+    let table = new AsciiTable3(`${listType.toUpperCase()} LIST`)
 
     // add header row
     table.setHeading('#:Item:Q' , 'Quantity', 'Price');
