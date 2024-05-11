@@ -1,12 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { AsciiTable3 } = require('ascii-table3'); 
 
-/* Example:
-[
-    { "command": "!showlistbig", "description": "Display a detailed list of all current buy and sell orders in desktop format, has all info" },
-]
-*/
-
 const variables = require('../../vars.json');
 const commandsHelp = variables.commands;
 
