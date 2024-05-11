@@ -40,6 +40,7 @@ async function publishLists(interaction) {
                     interaction.channel.send(`Failed to retrieve the ${listType} list.`)
                 } else {
                     interaction.reply({content: `Failed to retrieve the ${listType} list.`});
+                    first = false;
                 }
 
                 
@@ -48,6 +49,7 @@ async function publishLists(interaction) {
                     interaction.channel.send(`No ${listType} entries found.`);
                 } else {
                     interaction.reply({content: `No ${listType} entries found.`});
+                    first = false;
                 }
             } else {
                 let formattedList = '';
