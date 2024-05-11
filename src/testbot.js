@@ -6,7 +6,7 @@ const dotenv = require('dotenv').config()
 const fs = require('fs');
 const { AsciiTable3, AlignmentEnum } = require('ascii-table3'); 
 const path = require('node:path');
-const variables = require('../../vars.json');
+const variables = require('./vars.json');
 const commandsHelp = variables.commands;
 
 // get the token from dotenv
