@@ -1,0 +1,34 @@
+{
+  "name": "sales-bot",
+  "version": "2.0.0",
+  "description": "This bot acts as an alternative to the sim companies exchange, offering free listings and automatic notifications upon a listing match (buyer and seller).",
+  "main": "./src/testbot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node ./src/testbot.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/njmango/sales-bot.git"
+  },
+  "keywords": [
+    "Discord",
+    "Bot",
+    "Sales",
+    "Bot",
+    "Sim",
+    "Companies"
+  ],
+  "author": "njmango, mmcford",
+  "type": "module",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/njmango/sales-bot/issues"
+  },
+  "homepage": "https://github.com/njmango/sales-bot#readme",
+  "dependencies": {
+    "discord.js": "^14.15.2",
+    "node-fetch": "^3.3.2",
+    "sqlite3": "^5.1.7"
+  }
+}
