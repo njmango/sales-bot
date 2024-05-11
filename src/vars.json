@@ -1,0 +1,24 @@
+{
+    "commands": [
+        { "command": "!showlistbig", "description": "Display a detailed list of all current buy and sell orders in desktop format, has all info" },
+        { "command": "!showbig", "description": "Alias for !showlistbig" },
+        { "command": "!listbig", "description": "Alias for !showlistbig" },
+        { "command": "!biglist", "description": "Alias for !showlistbig" },
+        { "command": "!help", "description": "Display this help message." },
+        { "command": "!helpc", "description": "Display a compact version of this help message." },
+        { "command": "!edit", "description": "Edit an order: !edit [orderNumber] [itemName] [itemQuality] [itemQuantity] [itemPrice]" },
+        { "command": "!sell", "description": "List an item for sale: !sell [item name/ref] [quality] [quantity] [price modifier]" },
+        { "command": "!buy", "description": "List a buy order: !buy [item name/ref] [quality] [quantity] [price modifier]" },
+        { "command": "!showlist", "description": "Display all current buy and sell orders in mobile format" },
+        { "command": "!show", "description": "Alias for !showlist" },
+        { "command": "!list", "description": "Alias for !showlist" },
+        { "command": "!delete", "description": "Delete an order: !delete [orderNumber]" },
+        { "command": "!clear", "description": "Clear all orders from the sales list (Admin only)." },
+        { "command": "!insert", "description": "Insert a new item: !insert [item name] [quality] [quantity] [price] [action_type]" },
+        { "command": "!price", "description": "Fetch market price: !price [item name/ref] [item quality]" },
+        { "command": "!sell.fixed", "description": "List an item at fixed price: !sell.fixed [item name/ref] [quality] [quantity] [fixed price]" },
+        { "command": "!buy.fixed", "description":  "List a buy order at fixed price: !buy.fixed [item name/ref] [quality] [quantity] [fixed price]" }
+    ]
+}
+
+  
