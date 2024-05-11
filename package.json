@@ -4,8 +4,8 @@
   "description": "This bot acts as an alternative to the sim companies exchange, offering free listings and automatic notifications upon a listing match (buyer and seller).",
   "main": "./src/testbot.js",
   "scripts": {
-    "test": "node ./src/deploy-commands.js",
-    "start": "node ./src/testbot.js"
+    "start": "node ./src/testbot.js",
+    "deploy": "node ./src/deploy-commands.js"
   },
   "repository": {
     "type": "git",
