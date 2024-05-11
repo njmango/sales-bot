@@ -396,10 +396,6 @@ async function publishLists(channelId) {
 
 function formatSalesList(rows, listType) {
 
-
-    console.log("Rows: \n", rows);
-    console.log("\n\n\n")
-
     let table = new AsciiTable3(`${listType.toUpperCase()}ERS LIST`)
 
     // add header row
@@ -410,12 +406,6 @@ function formatSalesList(rows, listType) {
         const quantityInThousands = row.quantity;
         const modifierDisplay = row.price_modifier === 0 ? 'MP' : (row.price_modifier > 0 ? `+${row.price_modifier}` : `${row.price_modifier}`);
         let formattedPrice = row.price === -1 ? `MP (${modifierDisplay})` : `${row.price.toFixed(2)} (${modifierDisplay})`;
-
-        // Check if the formatted price fits within the max width, if not use scientific notation
-        // if (formattedPrice.length > maxPriceWidth) {
-        //     const scientificPrice = row.price.toExponential(2);
-        //     formattedPrice = `${scientificPrice} (${modifierDisplay})`;
-        //}
 
         table.addRow(orderItemQuality, quantityInThousands, formattedPrice)
     });
