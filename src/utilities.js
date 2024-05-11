@@ -1,6 +1,7 @@
 const fs = require('fs');
 const sqlite3 = require('sqlite3');
 const variables = require('./vars.json');
+const stringSimilarity = require("string-similarity");
 
 const admins = variables.admins;
 const logStream = fs.createWriteStream('./test-bot-log.txt', { flags: 'a' });
@@ -12,7 +13,8 @@ module.exports = {
     openDB,
     getItems,
     updateItemPrices,
-    checkAdmin
+    checkAdmin,
+    searchItem,
 };
 
 const items = {
@@ -301,4 +303,49 @@ async function findLowestPriceForItem(realmId, itemId, quality) {
 
 function checkAdmin(id) {
     return admins.includes(String(id));
+}
+
+function searchItem(input) {
+    /*
+    Given a string input, search for an item. The input will typically be the name or ID of an item.
+    */
+
+    let refNumber = parseInt(input);
+    let foundItem;
+
+    if (!isNaN(refNumber)) {
+        logToFileAndConsole(`Interpreted as reference number: ${refNumber}`);
+        foundItem = items[refNumber];
+        if (foundItem) {
+            logToFileAndConsole(`Found item by reference number: ${foundItem.name}`);
+            return {certain: true, name: foundItem.name};
+        }
+
+        logToFileAndConsole("Item not found.");
+        return {certain: false, name: null};
+    } 
+
+    logToFileAndConsole(`Interpreted as item name: ${input}`);
+    foundItem = Object.values(items).find(item => item.name.toLowerCase() === input.toLowerCase());
+    if (foundItem) {
+        logToFileAndConsole(`Found item by name: ${foundItem.name}`);
+        return {certain: true, name: foundItem.name};
+    }
+
+    // if no items are found so far, loop through all the items and find the one with the highest similarity
+    let highestSimilarity = 0;
+    let bestMatch;
+
+    for (const item of Object.values(items)) {
+        const similarity = stringSimilarity.compareTwoStrings(item.name.toLowerCase(), input.toLowerCase());
+        if (similarity > highestSimilarity) {
+            highestSimilarity = similarity;
+            bestMatch = item.name;
+        }
+    }
+
+    if (highestSimilarity > 0.7) {
+        logToFileAndConsole(`Best match found: ${bestMatch}`);
+        return {certain: false, name: bestMatch};
+    }    
 }
