@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { sendChunkedMessages, findLowestPriceForItem, logToFileAndConsole, getDB, searchItem   } = require("../../utilities.js");
+const { findLowestPriceForItem, logToFileAndConsole, searchItem, getDB} = require("../../utilities.js");
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -44,15 +44,56 @@ function handlePriceCommand(interaction) {
         interaction.reply({content: "Item not found.", ephemeral: true});
         return;
     }
-
+        
     findLowestPriceForItem(realmId, item.id, quality).then(priceInfo => {
         if (!priceInfo.price) {
             interaction.reply({content: "No price found for the specified item quality or below.", ephemeral: true});
         } else {
-            interaction.reply({content: `${item.name}: Lowest Price: $${priceInfo.price.toFixed(4)} at Quality ${priceInfo.quality}.`, ephemeral: true});
+
+            let message = `${item.name}: Lowest Price on the exchange: $${priceInfo.price.toFixed(4)} at Quality ${priceInfo.quality}.`
+
+            getLowestPriceLocal(item.name, quality).then(priceInfolocal => {
+
+                if (priceInfolocal !== null) {
+                    
+                    const localuser = priceInfolocal.user_id;
+                    const localorderNumber = priceInfolocal.orderNumber;
+                    const localprice = priceInfolocal.price.toFixed(4);
+                    const localquality = priceInfolocal.quality;
+                    const localquantity = priceInfolocal.quantity;
+
+                    message += `\n\n**Cheapest sale order for ${item.name} in this server**: \nOrder Number: ${localorderNumber} \n Price: $${localprice} \n Quality: ${localquality} \n Quantity: ${localquantity} \n Seller: <@${localuser}>`;
+                }
+                
+                interaction.reply({content: message, ephemeral: true, allowedMentions: {parse: []}});
+            });
         }
     }).catch(err => {
         logToFileAndConsole(`Error fetching price for item: ${itemNameOrNumber} - ${err}`);
         interaction.reply({content: "Failed to fetch the latest market price. Please try again later.", ephemeral: true});
+    });
+}
+
+async function getLowestPriceLocal(item_name, quality) {
+
+    const db = getDB();
+
+    // create a promise to return the data
+    return new Promise((resolve, reject) => {
+        db.get(
+            "SELECT user_id, quality, orderNumber, price, quantity FROM sales_list WHERE item_name = ? AND quality >= ? AND action_type = ? ORDER BY price ASC LIMIT 1", 
+            [item_name, quality, "sell"], 
+            (err, row) => {
+                if (err) {
+                    logToFileAndConsole(`Error retrieving entry: ${err.message}`);
+                    reject(err);
+                }
+        
+                if (!row) {
+                    resolve(null);
+                }
+                
+                resolve(row);
+            });
     });
 }
