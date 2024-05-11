@@ -70,7 +70,7 @@ async function handleSellCommand(interaction) {
 
     // Construct the message to send to the channel
     const responseMessage = `Buying ${resolvedItem.name} at Quality ${quality} for ${quantity} units at ${finalPrice.toFixed(3)}`;
-    interaction.reply(responseMessage);
+    interaction.reply({content: responseMessage, ephemeral: true});
 
     // Add entry to the sales list
     addEntry(interaction.channel.id, interaction.user.id, interaction.member ? interaction.user.displayName : interaction.user.username, resolvedItem.name, quality, quantity, true, finalPrice, priceModifier, false);
