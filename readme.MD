@@ -1,5 +1,7 @@
 # Sales Bot
 
+This branch has implemented all commands as slash commands from the main branch as of [eb16c01aa69c0276f76005615504f5aa4c3d7c81](https://github.com/njmango/sales-bot/commit/eb16c01aa69c0276f76005615504f5aa4c3d7c81). This includes minor feature improvements and bug fixes
+
 This bot acts as an alternative to the sim companies exchange, offering free 
 listings and automatic notifications upon a listing match (buyer and seller).
 
@@ -35,7 +37,8 @@ npm run start
 
 ## Example
 
-This repo is currently in the process of converting all commands over to slash commands as seen below
+### Buy Command
+![image](./img/buy%20example.gif)
 
 ### Help Command
 ![image](./img/help%20example.gif)
