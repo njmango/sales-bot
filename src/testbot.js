@@ -404,7 +404,7 @@ function formatSalesList(rows, listType) {
     rows.forEach(row => {
         const orderItemQuality = `${row.orderNumber}:${row.item_name.substring(0, 12)}:Q${row.quality}`;
         const quantityInThousands = row.quantity;
-        const modifierDisplay = row.price_modifier === 0 ? 'MP' : (row.price_modifier > 0 ? `+${row.price_modifier}` : `${row.price_modifier}`);
+        const modifierDisplay = row.price_modifier === 0 ? 'MP' : (row.price_modifier > 0 ? `${row.price_modifier}` : `${row.price_modifier}`);
         let formattedPrice = row.price === -1 ? `MP (${modifierDisplay})` : `${row.price.toFixed(2)} (${modifierDisplay})`;
 
         table.addRow(orderItemQuality, quantityInThousands, formattedPrice)
@@ -812,39 +812,32 @@ async function publishBigLists(channelId) {
 async function handleBigListCommand(msg) {
     publishBigLists(msg.channel.id);
 }
+
 // Function to format the big sales list
 function formatBigSalesList(rows, listType) {
-    const header = `${listType.toUpperCase()} LIST`;
     const headers = ["Order", "Item", "Quality", "Quantity", "Price (MP +/-)", "Seller"];
-    const columnWidths = {
-        order: Math.max(...rows.map(row => row.orderNumber.toString().length), headers[0].length),
-        item: Math.max(...rows.map(row => row.item_name.length), headers[1].length),
-        quality: Math.max(...rows.map(row => row.quality.toString().length), headers[2].length),
-        quantity: Math.max(...rows.map(row => row.quantity.toString().length), headers[3].length),
-        price: Math.max(...rows.map(row => {
-            const modifierDisplay = row.price_modifier === 0 ? '' : (row.price_modifier > 0 ? `+${row.price_modifier}` : `${row.price_modifier}`);
-            const priceDisplay = `${row.price.toFixed(2)} ${modifierDisplay ? `(${modifierDisplay})` : '(MP)'}`;
-            return priceDisplay.length;
-        }), headers[4].length),
-        seller: Math.max(...rows.map(row => row.username.length), headers[5].length)
-    };
 
-    let message = `${header}\n` + "+-" + "-".repeat(columnWidths.order) + "-+-" + "-".repeat(columnWidths.item) + "-+-" + "-".repeat(columnWidths.quality) + "-+-" + "-".repeat(columnWidths.quantity) + "-+-" + "-".repeat(columnWidths.price) + "-+-" + "-".repeat(columnWidths.seller) + "-+\n";
-    message += "| " + headers.map((header, i) => header.padEnd(Object.values(columnWidths)[i])).join(" | ") + " |\n";
-    message += "+-" + "-".repeat(columnWidths.order) + "-+-" + "-".repeat(columnWidths.item) + "-+-" + "-".repeat(columnWidths.quality) + "-+-" + "-".repeat(columnWidths.quantity) + "-+-" + "-".repeat(columnWidths.price) + "-+-" + "-".repeat(columnWidths.seller) + "-+\n";
+    let table = new AsciiTable3(`${listType.toUpperCase()} LIST`);
+
+    // Add header row
+    table.setHeading(...headers);
+
 
     rows.forEach(row => {
-        const order = row.orderNumber.toString().padEnd(columnWidths.order);
-        const item = row.item_name.padEnd(columnWidths.item);
-        const quality = row.quality.toString().padEnd(columnWidths.quality);
-        const quantity = row.quantity.toString().padEnd(columnWidths.quantity);
-        const modifierDisplay = row.price_modifier === 0 ? '' : (row.price_modifier > 0 ? `+${row.price_modifier}` : `${row.price_modifier}`);
+        const order = row.orderNumber.toString();
+        const item = row.item_name;
+        const quality = row.quality.toString();
+        const quantity = row.quantity.toString();
+        const modifierDisplay = row.price_modifier === 0 ? '' : (row.price_modifier > 0 ? `${row.price_modifier}` : `${row.price_modifier}`);
         const priceDisplay = `${row.price.toFixed(2)} ${modifierDisplay ? `(${modifierDisplay})` : '(MP)'}`;
-        const price = `${row.price.toFixed(2)} (${modifierDisplay})`.padEnd(columnWidths.price);
-        const seller = row.username.padEnd(columnWidths.seller);
-        message += "| " + order + " | " + item + " | " + quality + " | " + quantity + " | " + price + " | " + seller + " |\n";
+        const price = `${row.price.toFixed(2)} (${modifierDisplay})`;
+        const seller = row.username;
+
+        table.addRow(order, item, quality, quantity, price, seller);
+
     });
-    message += "+-" + "-".repeat(columnWidths.order) + "-+-" + "-".repeat(columnWidths.item) + "-+-" + "-".repeat(columnWidths.quality) + "-+-" + "-".repeat(columnWidths.quantity) + "-+-" + "-".repeat(columnWidths.price) + "-+-" + "-".repeat(columnWidths.seller) + "-+\n";
+    
+    let message = table.toString()
 
     return message;
 }
