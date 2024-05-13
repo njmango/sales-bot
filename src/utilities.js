@@ -278,13 +278,14 @@ async function searchItem(input) {
 
         if (foundItem) {
             logToFileAndConsole(`Found item by ${isNaN(refNumber) ? 'name' : 'ID'}: ${foundItem.name}`);
-            return { certain: true, name: foundItem.name, id: foundItem.item_id, similarity: 1.0 };
+            return { certain: true, name: foundItem.name, id: foundItem.item_id, similarity: 1.0, tableid: foundItem.id};
         }
 
-        const rows = await promisify(db.all).bind(db)("SELECT name, item_id FROM items");
+        const rows = await promisify(db.all).bind(db)("SELECT name, item_id, id FROM items");
         let highestSimilarity = 0;
         let bestMatchName;
         let bestMatchId;
+        let tblId;
 
         for (const item of rows) {
             const similarity = stringSimilarity.compareTwoStrings(item.name.toLowerCase(), String(input).toLowerCase());
@@ -292,18 +293,19 @@ async function searchItem(input) {
                 highestSimilarity = similarity;
                 bestMatchName = item.name;
                 bestMatchId = item.item_id;
+                tblId = item.id;
             }
         }
 
         if (highestSimilarity >= 0.7) {
             logToFileAndConsole(`Best match found: ${bestMatchName}`);
-            return { certain: false, name: bestMatchName, id: bestMatchId, similarity: highestSimilarity };
+            return { certain: false, name: bestMatchName, id: bestMatchId, similarity: highestSimilarity, tableid: tblId};
         }
 
-        return { certain: false, name: bestMatchName, id: bestMatchId, similarity: highestSimilarity };
+        return { certain: false, name: bestMatchName, id: bestMatchId, similarity: highestSimilarity, tableid: tblId };
     } catch (error) {
         console.error(error);
-        return { certain: false, name: null, id: null, similarity: 0.0 };
+        return { certain: false, name: null, id: null, similarity: 0.0, tableid: null };
     }
 }
 
@@ -470,6 +472,8 @@ async function getUser(userId, userName) {
             const insertSQL = "INSERT INTO users (discord_id, username, cached_time) VALUES (?, ?, ?)";
             await promisify(db.run).bind(db)(insertSQL, [userId, userName, currentTime]);
             logToFileAndConsole(`A new user has been inserted with discord_id ${userId}`);
+
+            return getUser(userId, userName)
         } else {
             // If user exists, update if necessary
             if (row.username !== userName) {
@@ -486,7 +490,7 @@ async function getUser(userId, userName) {
     }
 }
 
-async function addEntry(channelId, userId, userName, itemName, quality, quantity, buying, price, priceModifier, isFixedPrice, interaction = null) {
+async function addEntry(channelId, userId, userName, itemID, quality, quantity, buying, price, priceModifier, isFixedPrice, interaction = null) {
     try {
         const timestamp = new Date().toISOString();
         const actionType = buying ? 'buy' : 'sell';
@@ -494,10 +498,11 @@ async function addEntry(channelId, userId, userName, itemName, quality, quantity
         console.log(price)
         const formattedPrice = parseFloat(price).toFixed(4);
 
-        logToFileAndConsole(`Adding entry: ${actionType} ${quantity} of ${itemName} at quality ${quality} for $${formattedPrice} by user ${userId}`);
+        logToFileAndConsole(`Adding entry: ${actionType} ${quantity} of item ${itemID} at quality ${quality} for $${formattedPrice} by user ${userId}`);
 
         // Wait for getUser to return before proceeding
         const user = await getUser(userId, userName);
+
         if (!user) {
             // Handle case where user is not found
             logToFileAndConsole(`User not found for userId: ${userId}`);
@@ -505,10 +510,10 @@ async function addEntry(channelId, userId, userName, itemName, quality, quantity
         }
 
         const insertSQL = `
-            INSERT INTO sales_list (channel_id, user_id, item_name, quantity, quality, timestamp, action_type, price, price_modifier, is_fixed_price)
+            INSERT INTO sales_list (channel_id, user_id, item, quantity, quality, timestamp, action_type, price, price_modifier, is_fixed_price)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
-        db.run(insertSQL, [channelId, user.id, itemName, quantity, quality, timestamp, actionType, price, priceModifier, isFixedPrice ? 1 : 0], function(err) {
+        db.run(insertSQL, [channelId, user.id, itemID, quantity, quality, timestamp, actionType, price, priceModifier, isFixedPrice ? 1 : 0], function(err) {
             if (err) {
                 logToFileAndConsole(`Error inserting into sales_list: ${err.message}`);
                 return;
@@ -541,11 +546,14 @@ function handleMatches(channelId, interaction) {
                 return;
             }
 
+            let changesMade = false;
+
             // Adjusted SQL query to include price conditions
             let query = `
-            SELECT sl.id, sl.orderNumber, sl.channel_id, sl.item_name, u.username, u.discord_id, sl.quantity, sl.quality, 
+            SELECT sl.id, sl.orderNumber, sl.channel_id, i.name, u.username, u.discord_id, sl.quantity, sl.quality, 
             sl.timestamp, sl.action_type, sl.price, sl.price_modifier, sl.is_fixed_price FROM sales_list sl
             INNER JOIN users u on u.id = sl.user_id
+            INNER JOIN items i on i.item_id = sl.item
             WHERE sl.channel_id = ?
             `;
 
@@ -594,7 +602,7 @@ function handleMatches(channelId, interaction) {
                             continue;
                         }
                         
-                        let itemNamesMatch = buyOrder.item_name === sellOrder.item_name; // check if the item names match
+                        let itemNamesMatch = buyOrder.name === sellOrder.name; // check if the item names match
                         let qualityMatch = sellOrder.quality >= buyOrder.quality; // check if the sell order quality is greater than or equal to the buy order quality
                         let priceMatch = sellOrder.price <= buyOrder.price; // check if the sell order price is less than or equal to the buy order price
                         let quantityMatch = sellOrder.quantity >= buyOrder.quantity; // check if the sell order quantity is greater than or equal to the buy order quantity
@@ -617,7 +625,7 @@ function handleMatches(channelId, interaction) {
                     let buyOrder = match.buyOrder;
                     let sellOrder = match.sellOrder;
 
-                    let message = `<@!${buyOrder.discord_id}> Match found! <@!${sellOrder.discord_id}> is selling ${buyOrder.quantity} Q${buyOrder.quality} ${buyOrder.item_name} @$${buyOrder.price}.`;
+                    let message = `<@!${buyOrder.discord_id}> Match found! <@!${sellOrder.discord_id}> is selling ${buyOrder.quantity} Q${buyOrder.quality} ${buyOrder.name} @$${buyOrder.price}.`;
 
                     // check if the buy order quantity is less than the sell order quantity
                     if (buyOrder.quantity < sellOrder.quantity) {
@@ -640,11 +648,6 @@ function handleMatches(channelId, interaction) {
                                 logToFileAndConsole(`Deleted buy order ${buyOrder.id}`);
                             }
                         });
-
-                        
-                        
-                        // commit the changes
-                        db.run("COMMIT");
 
                         // append the new sell order quantity to the message
                         message += `\n The sell order has been updated to now have ${sellOrder.quantity - buyOrder.quantity} units remaining.`;
@@ -674,9 +677,6 @@ function handleMatches(channelId, interaction) {
                         }
                     });
 
-                    // commit the changes
-                    db.run("COMMIT");
-
                     logToFileAndConsole(message);
 
                     // send the message to the channel
@@ -684,6 +684,9 @@ function handleMatches(channelId, interaction) {
                 }
 
             });
+
+            // close the transaction
+            db.run("COMMIT");
         });
     });
 }

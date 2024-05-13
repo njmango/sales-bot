@@ -18,15 +18,15 @@ async function publishLists(interaction) {
 
     //updateListPrices(interaction.channel);
 
+    const base_query = `SELECT orderNumber, i.name , quality, quantity, price, price_modifier, users.username, action_type FROM sales_list
+    INNER JOIN users ON sales_list.user_id = users.id
+    INNER JOIN items i ON sales_list.item = i.id`
+    
     // Retrieve and display sales list for both selling and buying
     const queries = {
-        sell: `SELECT orderNumber, item_name, quality, quantity, price, price_modifier, users.username, action_type FROM sales_list 
-        INNER JOIN users ON sales_list.user_id = users.id
-        WHERE action_type = 'sell' ORDER BY orderNumber DESC`,
-        buy: `SELECT orderNumber, item_name, quality, quantity, price, price_modifier, users.username, action_type FROM sales_list 
-        INNER JOIN users ON sales_list.user_id = users.id
-        WHERE action_type = 'buy' ORDER BY orderNumber DESC`
-    };
+        sell: `${base_query} WHERE action_type = 'sell' ORDER BY orderNumber DESC`,
+        buy: `${base_query} WHERE action_type = 'buy' ORDER BY orderNumber DESC`
+    }
 
     const db = getDB();
     channelId = interaction.channel.id;
@@ -82,7 +82,7 @@ function formatSalesList(rows, listType) {
     table.setHeading('#:Item:Q' , 'Quantity', 'Price');
 
     rows.forEach(row => {
-        const orderItemQuality = `${row.orderNumber}:${row.item_name.substring(0, 12)}:Q${row.quality}`;
+        const orderItemQuality = `${row.orderNumber}:${row.name.substring(0, 12)}:Q${row.quality}`;
         const quantityInThousands = row.quantity;
         const modifierDisplay = row.price_modifier === 0 ? 'MP' : (row.price_modifier > 0 ? `${row.price_modifier}` : `${row.price_modifier}`);
         let formattedPrice = row.price === -1 ? `MP (${modifierDisplay})` : `${row.price.toFixed(2)} (${modifierDisplay})`;
@@ -114,7 +114,7 @@ function formatBigSalesList(rows, listType) {
 
     rows.forEach(row => {
         const order = row.orderNumber.toString();
-        const item = row.item_name;
+        const item = row.name;
         const quality = row.quality.toString();
         const quantity = row.quantity.toString();
         const modifierDisplay = row.price_modifier === 0 ? '' : (row.price_modifier > 0 ? `${row.price_modifier}` : `${row.price_modifier}`);

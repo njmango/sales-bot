@@ -86,5 +86,5 @@ async function handleSellCommand(interaction) {
     interaction.reply({content: responseMessage, ephemeral: true});
 
     // Add entry to the sales list
-    await addEntry(interaction.channel.id, interaction.user.id, interaction.member ? interaction.user.displayName : interaction.user.username, resolvedItem.name, quality, quantity, false, finalPrice, priceModifier, false, interaction);
+    await addEntry(interaction.channel.id, interaction.user.id, interaction.member ? interaction.user.displayName : interaction.user.username, resolvedItem.tableid, quality, quantity, false, finalPrice, priceModifier, false, interaction);
 }

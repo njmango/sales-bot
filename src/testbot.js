@@ -82,7 +82,7 @@ function initDatabase() {
         orderNumber INTEGER,
         channel_id TEXT NOT NULL,
         user_id TEXT NOT NULL,
-        item_name TEXT NOT NULL,
+        item TEXT NOT NULL,
         quantity INTEGER NOT NULL,
         quality INTEGER NOT NULL,
         timestamp TEXT NOT NULL,

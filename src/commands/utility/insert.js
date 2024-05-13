@@ -101,6 +101,6 @@ async function handleInsertCommand(interaction) {
 
     logToFileAndConsole(`Inserting entry on behalf of user ${userId}: ${itemName}, Quality=${quality}, Quantity=${quantity}, Price=${finalPrice.toFixed(4)}`);
 
-    await addEntry(interaction.channel.id, userId, user.username, itemName, quality, quantity, buy, finalPrice, priceModifier, isFixedPrice);
+    await addEntry(interaction.channel.id, userId, user.username, resolvedItem.tableid, quality, quantity, buy, finalPrice, priceModifier, isFixedPrice);
     interaction.reply({content:`Entry added for ${itemName}, Quality=${quality}, Quantity=${quantity}, Price=${finalPrice.toFixed(4)}`, ephemeral: true});
 }

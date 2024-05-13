@@ -52,11 +52,11 @@ async function handlePriceCommand(interaction) {
 
             let message = `${item.name}: Lowest Price on the exchange: $${priceInfo.price.toFixed(4)} at Quality ${priceInfo.quality}.`
 
-            getLowestPriceLocal(item.name, quality).then(priceInfolocal => {
+            getLowestPriceLocal(item.id, quality).then(priceInfolocal => {
 
                 if (priceInfolocal !== null) {
                     
-                    const localuser = priceInfolocal.user_id;
+                    const localuser = priceInfolocal.discord_id;
                     const localorderNumber = priceInfolocal.orderNumber;
                     const localprice = priceInfolocal.price.toFixed(4);
                     const localquality = priceInfolocal.quality;
@@ -74,15 +74,18 @@ async function handlePriceCommand(interaction) {
     });
 }
 
-async function getLowestPriceLocal(item_name, quality) {
+async function getLowestPriceLocal(itemID, quality) {
 
     const db = getDB();
 
     // create a promise to return the data
     return new Promise((resolve, reject) => {
         db.get(
-            "SELECT user_id, quality, orderNumber, price, quantity FROM sales_list WHERE item_name = ? AND quality >= ? AND action_type = ? ORDER BY price ASC LIMIT 1", 
-            [item_name, quality, "sell"], 
+            `SELECT u.discord_id, quality, orderNumber, price, quantity FROM sales_list 
+            INNER JOIN users u ON sales_list.user_id = u.id
+            INNER JOIN items i ON sales_list.item = i.id
+            WHERE i.id = ? AND quality >= ? AND action_type = ? ORDER BY price ASC LIMIT 1`, 
+            [itemID, quality, "sell"], 
             (err, row) => {
                 if (err) {
                     logToFileAndConsole(`Error retrieving entry: ${err.message}`);
