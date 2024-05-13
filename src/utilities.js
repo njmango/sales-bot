@@ -11,10 +11,8 @@ const logStream = fs.createWriteStream('./test-bot-log.txt', { flags: 'a' });
 
 module.exports = {
     sendChunkedMessages,
-    updateListPrices,
     logToFileAndConsole,
     getDB,
-    getItems,
     updateItemPrices,
     checkAdmin,
     searchItem,
@@ -31,11 +29,6 @@ const db = new sqlite3.Database('./testsalesData.db', (err) => {
         return;
     }
 });
-
-
-function getItems() {
-    return items;
-}
 
 function updateItemPrices(itemKey, quality, pricesR1, pricesR2) {
     items[itemKey].pricesR1[quality] = pricesR1;
@@ -86,7 +79,10 @@ async function updateListPrices() {
         for (const row of rows) {
             const { item_name, quality, price_modifier, id, is_fixed_price } = row;
             logToFileAndConsole(`updateListPrices: Processing item ${item_name} with ID ${id}.`);
-            const itemKey = Object.keys(items).find(key => items[key].name.toLowerCase() === item_name.toLowerCase());
+
+            let items = await getAllDBItems();
+
+            const itemKey = items.find(item => item.name === item_name)?.item_id;
             if (!itemKey) {
                 logToFileAndConsole(`updateListPrices: Item not found in items list: ${item_name}`);
                 continue;
@@ -170,6 +166,17 @@ async function sortItems(){
 
 
 } 
+
+async function getAllDBItems() {
+    try {
+        const db = getDB();
+        const rows = await promisify(db.all).bind(db)("SELECT * FROM items");
+        return rows;
+    } catch (error) {
+        console.error(error);
+        return null;
+    }
+}
 
 async function getAllItems(){
 
@@ -446,34 +453,86 @@ async function findLowestPriceForItem(realmId, itemId, quality) {
     }
 }
 
-function addEntry(channelId, userId, userName, itemName, quality, quantity, buying, price, priceModifier, isFixedPrice) {
-    const timestamp = new Date().toISOString();
-    const actionType = buying ? 'buy' : 'sell';
-    const formattedPrice = isFixedPrice ? price.toFixed(4) : parseFloat(price).toFixed(4);
+async function getUser(userId, userName) {
+    try {
+        const db = getDB();
+        const query = "SELECT * FROM users WHERE discord_id = ?";
+        const currentTime = Math.floor(Date.now() / 1000);
 
-    logToFileAndConsole(`Adding entry: ${actionType} ${quantity} of ${itemName} at quality ${quality} for $${formattedPrice} by user ${userId}`);
+        // Promisify the db.get function
+        const dbGetAsync = promisify(db.get).bind(db);
 
-    const insertSQL = `
-    INSERT INTO sales_list (channel_id, user_id, username, item_name, quantity, quality, timestamp, action_type, price, price_modifier, is_fixed_price)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`;
-    db.run(insertSQL, [channelId, userId, userName, itemName, quantity, quality, timestamp, actionType, price, priceModifier, isFixedPrice ? 1 : 0], function(err) {
-        if (err) {
-            logToFileAndConsole(`Error inserting into sales_list: ${err.message}`);
-            return;
-        }
-        logToFileAndConsole(`A new row has been inserted with rowid ${this.lastID}, which should be the new orderNumber`);
-        // Optionally update the orderNumber based on lastID if necessary
-        db.run("UPDATE sales_list SET orderNumber = ? WHERE id = ?", [this.lastID, this.lastID], function(err) {
-            if (err) {
-                logToFileAndConsole(`Error updating orderNumber: ${err.message}`);
+        // Query the database for the user
+        let row = await dbGetAsync(query, [userId]);
+
+        if (!row) {
+            // If user doesn't exist, insert a new user record
+            const insertSQL = "INSERT INTO users (discord_id, username, cached_time) VALUES (?, ?, ?)";
+            await promisify(db.run).bind(db)(insertSQL, [userId, userName, currentTime]);
+            logToFileAndConsole(`A new user has been inserted with discord_id ${userId}`);
+        } else {
+            // If user exists, update if necessary
+            if (row.username !== userName) {
+                const updateSQL = "UPDATE users SET username = ?, cached_time = ? WHERE discord_id = ?";
+                await promisify(db.run).bind(db)(updateSQL, [userName, currentTime, userId]);
+                logToFileAndConsole(`User with discord_id ${userId} has been updated`);
             }
-        });
-    });
-    handleMatches(channelId);
+            console.log(`User found: ${row.id}`);
+            return { id: row.id, discord_id: row.discord_id, username: row.username, cached_time: row.cached_time };
+        }
+    } catch (error) {
+        console.error(error);
+        return null;
+    }
 }
 
-function handleMatches(channelId) {
+async function addEntry(channelId, userId, userName, itemName, quality, quantity, buying, price, priceModifier, isFixedPrice, interaction = null) {
+    try {
+        const timestamp = new Date().toISOString();
+        const actionType = buying ? 'buy' : 'sell';
+
+        console.log(price)
+        const formattedPrice = parseFloat(price).toFixed(4);
+
+        logToFileAndConsole(`Adding entry: ${actionType} ${quantity} of ${itemName} at quality ${quality} for $${formattedPrice} by user ${userId}`);
+
+        // Wait for getUser to return before proceeding
+        const user = await getUser(userId, userName);
+        if (!user) {
+            // Handle case where user is not found
+            logToFileAndConsole(`User not found for userId: ${userId}`);
+            return;
+        }
+
+        const insertSQL = `
+            INSERT INTO sales_list (channel_id, user_id, item_name, quantity, quality, timestamp, action_type, price, price_modifier, is_fixed_price)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        db.run(insertSQL, [channelId, user.id, itemName, quantity, quality, timestamp, actionType, price, priceModifier, isFixedPrice ? 1 : 0], function(err) {
+            if (err) {
+                logToFileAndConsole(`Error inserting into sales_list: ${err.message}`);
+                return;
+            }
+            logToFileAndConsole(`A new row has been inserted with rowid ${this.lastID}, which should be the new orderNumber`);
+            // Optionally update the orderNumber based on lastID if necessary
+            db.run("UPDATE sales_list SET orderNumber = ? WHERE id = ?", [this.lastID, this.lastID], function(err) {
+                if (err) {
+                    logToFileAndConsole(`Error updating orderNumber: ${err.message}`);
+                }
+            });
+        });
+        handleMatches(channelId, interaction);
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+
+function handleMatches(channelId, interaction) {
+
+    if (interaction === null) {
+        return;
+    }
 
     db.serialize(() => {
         db.run("BEGIN TRANSACTION", (err) => {
@@ -483,17 +542,14 @@ function handleMatches(channelId) {
             }
 
             // Adjusted SQL query to include price conditions
-            let findMatchesSQL = `
-                SELECT s1.id AS sell_id, s2.id AS buy_id, s1.quantity AS sell_quantity, s2.quantity AS buy_quantity, 
-                       s1.item_name, s1.quality, s1.user_id AS seller_id, s2.user_id AS buyer_id, s1.price AS sell_price, s2.price AS buy_price
-                FROM sales_list s1
-                JOIN sales_list s2 ON s1.item_name = s2.item_name AND s1.quality = s2.quality AND s1.channel_id = s2.channel_id
-                WHERE s1.channel_id = ? AND s2.channel_id = ?
-                  AND ((s1.action_type = 'sell' AND s2.action_type = 'buy' AND s2.price >= s1.price)
-                    OR (s1.action_type = 'buy' AND s2.action_type = 'sell' AND s1.price >= s2.price))
+            let query = `
+            SELECT sl.id, sl.orderNumber, sl.channel_id, sl.item_name, u.username, u.discord_id, sl.quantity, sl.quality, 
+            sl.timestamp, sl.action_type, sl.price, sl.price_modifier, sl.is_fixed_price FROM sales_list sl
+            INNER JOIN users u on u.id = sl.user_id
+            WHERE sl.channel_id = ?
             `;
 
-            db.all(findMatchesSQL, [channelId, channelId], (err, rows) => {
+            db.all(query, [channelId], (err, rows) => {
                 if (err) {
                     logToFileAndConsole(`Error finding matches: ${err.message}`);
                     db.run("ROLLBACK");
@@ -501,48 +557,132 @@ function handleMatches(channelId) {
                 }
 
                 if (rows.length === 0) {
-                    logToFileAndConsole("No matches found.");
+                    logToFileAndConsole("No data in table.");
                     db.run("COMMIT");
                     return;
                 }
 
-                logToFileAndConsole(`Found ${rows.length} matches, processing...`);
+                logToFileAndConsole(`Found ${rows.length} rows, processing...`);
 
-                // Process only the first match
-                let row = rows[0];
-                let minQuantity = Math.min(row.sell_quantity, row.buy_quantity);
-                let finalPrice = row.sell_price === row.buy_price ? row.sell_price : (row.sell_id < row.buy_id ? row.sell_price : row.buy_price);
+                // Process rows to find matches
+                let matches = [];
+                let buyOrders = [];
+                let sellOrders = [];
 
-                db.run("UPDATE sales_list SET quantity = quantity - ? WHERE id IN (?, ?)", 
-                    [minQuantity, row.sell_id, row.buy_id], function(err) {
-                    if (err) {
-                        logToFileAndConsole(`Error updating quantities: ${err.message}`);
-                        db.run("ROLLBACK");
-                        return;
+                for (let i = 0; i < rows.length; i++) {
+                    let row = rows[i];
+                    if (row.action_type === 'buy') {
+                        buyOrders.push(row);
+                    } else {
+                        sellOrders.push(row);
+                    }
+                }
+
+                for (let i = 0; i < buyOrders.length; i++) {
+                    let buyOrder = buyOrders[i];
+
+                    // ensure the buy orders id is not in the matches list
+                    if (matches.some(match => match.buyOrder.id === buyOrder.id || match.sellOrder.id === buyOrder.id)) {
+                        continue;
                     }
 
-                    // Send a notification message with price information
-                    client.channels.fetch(channelId).then(channel => {
-                        channel.send(`Match found! <@${row.seller_id}> please send ${minQuantity} units of ${row.item_name} Q:${row.quality} at $${finalPrice.toFixed(4)} to <@${row.buyer_id}>.`);
-                    }).catch(console.error);
+                    for (let j = 0; j < sellOrders.length; j++) {
+                        let sellOrder = sellOrders[j];
 
-                    db.run("DELETE FROM sales_list WHERE quantity <= 0", (err) => {
-                        if (err) {
-                            logToFileAndConsole(`Error deleting zero quantity entries: ${err.message}`);
-                            db.run("ROLLBACK");
-                            return;
+                        // ensure the sell orders id is not in the matches list
+                        if (matches.some(match => match.sellOrder.id === sellOrder.id || match.buyOrder.id === sellOrder.id)) {
+                            continue;
                         }
-                        db.run("COMMIT", (err) => {
-                            if (err) {
-                                logToFileAndConsole(`Error committing transaction: ${err.message}`);
-                                db.run("ROLLBACK");
-                                return;
-                            }
-                            logToFileAndConsole("Transaction committed successfully, updating lists.");
-                            publishLists(channelId); // Refresh the sales list after successful transaction
+                        
+                        let itemNamesMatch = buyOrder.item_name === sellOrder.item_name; // check if the item names match
+                        let qualityMatch = sellOrder.quality >= buyOrder.quality; // check if the sell order quality is greater than or equal to the buy order quality
+                        let priceMatch = sellOrder.price <= buyOrder.price; // check if the sell order price is less than or equal to the buy order price
+                        let quantityMatch = sellOrder.quantity >= buyOrder.quantity; // check if the sell order quantity is greater than or equal to the buy order quantity
+
+                        if (!itemNamesMatch || !qualityMatch || !priceMatch || !quantityMatch) {
+                            continue;
+                        }
+
+                        // append the match to the matches list
+                        matches.push({
+                            buyOrder: buyOrder,
+                            sellOrder: sellOrder
                         });
+                    }
+                }
+
+                // loop through the matches list, send a message to the channel and remove the matched orders
+                for (let i = 0; i < matches.length; i++) {
+                    let match = matches[i];
+                    let buyOrder = match.buyOrder;
+                    let sellOrder = match.sellOrder;
+
+                    let message = `<@!${buyOrder.discord_id}> Match found! <@!${sellOrder.discord_id}> is selling ${buyOrder.quantity} Q${buyOrder.quality} ${buyOrder.item_name} @$${buyOrder.price}.`;
+
+                    // check if the buy order quantity is less than the sell order quantity
+                    if (buyOrder.quantity < sellOrder.quantity) {
+                        // update the sell order quantity
+                        console.log(`Updating sell order quantity ${sellOrder.id}`)
+                        db.run("UPDATE sales_list SET quantity = ? WHERE id = ?", [sellOrder.quantity - buyOrder.quantity, sellOrder.id], (err) => {
+                            if (err) {
+                                logToFileAndConsole(`Error updating sell order quantity: ${err.message}`);
+                            } else {
+                                logToFileAndConsole(`Updated sell order quantity ${sellOrder.id}`);
+                            }
+                        }); 
+
+                        // delete the buy order
+                        console.log(`Deleting buy order ${buyOrder.id}`)
+                        db.run("DELETE FROM sales_list WHERE id = ?", [buyOrder.id], (err) => {
+                            if (err) {
+                                logToFileAndConsole(`Error deleting buy order: ${err.message}`);
+                            } else {
+                                logToFileAndConsole(`Deleted buy order ${buyOrder.id}`);
+                            }
+                        });
+
+                        
+                        
+                        // commit the changes
+                        db.run("COMMIT");
+
+                        // append the new sell order quantity to the message
+                        message += `\n The sell order has been updated to now have ${sellOrder.quantity - buyOrder.quantity} units remaining.`;
+
+                        // send the message to the channel
+                        logToFileAndConsole(message);
+                        interaction.channel.send(message);
+                        continue;
+                    } 
+
+                    console.log(`Deleting buy order ${buyOrder.id}`)
+                    // send the message to the channel
+                    db.run("DELETE FROM sales_list WHERE id = ?", [buyOrder.id], (err) => {
+                        if (err) {
+                            logToFileAndConsole(`Error deleting buy order: ${err.message}`);
+                        } else {
+                            logToFileAndConsole(`Deleted buy order ${buyOrder.id}`);
+                        }
                     });
-                });
+
+                    console.log(`Deleting sell order ${sellOrder.id}`)
+                    db.run("DELETE FROM sales_list WHERE id = ?", [sellOrder.id], (err) => {
+                        if (err) {
+                            logToFileAndConsole(`Error deleting sell order: ${err.message}`);
+                        } else {
+                            logToFileAndConsole(`Deleted sell order ${sellOrder.id}`);
+                        }
+                    });
+
+                    // commit the changes
+                    db.run("COMMIT");
+
+                    logToFileAndConsole(message);
+
+                    // send the message to the channel
+                    interaction.channel.send(message);
+                }
+
             });
         });
     });

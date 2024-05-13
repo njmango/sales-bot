@@ -26,7 +26,7 @@ module.exports = {
     }
 };
 
-function handleEditCommand(interaction) {
+async function handleEditCommand(interaction) {
 
     const orderNum = interaction.options.getInteger('order_number');
     const itemQuality = interaction.options.getInteger('new_quality');
@@ -41,7 +41,7 @@ function handleEditCommand(interaction) {
     if (itemName !== null && itemName !== "") {
 
         // search the item
-        resolvedItem = searchItem(itemName);
+        resolvedItem = await searchItem(itemName);
         itemKey = resolvedItem.id;
 
 

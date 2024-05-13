@@ -16,12 +16,16 @@ module.exports = {
 
 async function publishLists(interaction) {
 
-    updateListPrices(interaction.channel);
+    //updateListPrices(interaction.channel);
 
     // Retrieve and display sales list for both selling and buying
     const queries = {
-        sell: "SELECT orderNumber, item_name, quality, quantity, price, price_modifier, username, action_type FROM sales_list WHERE action_type = 'sell' ORDER BY orderNumber DESC",
-        buy: "SELECT orderNumber, item_name, quality, quantity, price, price_modifier, username, action_type FROM sales_list WHERE action_type = 'buy' ORDER BY orderNumber DESC"
+        sell: `SELECT orderNumber, item_name, quality, quantity, price, price_modifier, users.username, action_type FROM sales_list 
+        INNER JOIN users ON sales_list.user_id = users.id
+        WHERE action_type = 'sell' ORDER BY orderNumber DESC`,
+        buy: `SELECT orderNumber, item_name, quality, quantity, price, price_modifier, users.username, action_type FROM sales_list 
+        INNER JOIN users ON sales_list.user_id = users.id
+        WHERE action_type = 'buy' ORDER BY orderNumber DESC`
     };
 
     const db = getDB();

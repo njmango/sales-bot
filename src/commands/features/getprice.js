@@ -24,7 +24,7 @@ module.exports = {
     }
 };
 
-function handlePriceCommand(interaction) {
+async function handlePriceCommand(interaction) {
 
     const quality = interaction.options.getInteger('quality');
     const itemNameOrNumber = interaction.options.getString('item_name');
@@ -35,7 +35,7 @@ function handlePriceCommand(interaction) {
 
     logToFileAndConsole(`Received item name or number: ${itemNameOrNumber}`);
 
-    const item = searchItem(itemNameOrNumber);
+    const item = await searchItem(itemNameOrNumber);
 
     if (item.certain == false && item.name != null && item.similarity < 0.7) {
         interaction.reply({content: `Item not found, did you mean ${item.name}?`, ephemeral: true});

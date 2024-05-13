@@ -38,7 +38,7 @@ async function handleSellCommand(interaction) {
     const isFixedPrice = interaction.options.getString('price_type') === 'fixed' ? true : false;
 
     // search the item
-    const resolvedItem = searchItem(itemName);
+    const resolvedItem = await searchItem(itemName);
     const itemKey = resolvedItem.id;
 
     if (resolvedItem.name == null) {
@@ -84,5 +84,5 @@ async function handleSellCommand(interaction) {
     interaction.reply({content: responseMessage, ephemeral: true});
 
     // Add entry to the sales list
-    addEntry(interaction.channel.id, interaction.user.id, interaction.member ? interaction.user.displayName : interaction.user.username, resolvedItem.name, quality, quantity, true, finalPrice, priceModifier, isFixedPrice);
+    await addEntry(interaction.channel.id, interaction.user.id, interaction.member ? interaction.user.displayName : interaction.user.username, resolvedItem.name, quality, quantity, true, finalPrice, priceModifier, isFixedPrice, interaction);
 }
