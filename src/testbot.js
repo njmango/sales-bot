@@ -1,16 +1,13 @@
 // import all the requirements at the top for readability
-const { Client, Collection, Events, GatewayIntentBits, REST, Routes } = require('discord.js');
-const fetch = import('node-fetch');
+const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const sqlite3 = require('sqlite3');
 const dotenv = require('dotenv').config()
 const fs = require('fs');
-const { AsciiTable3, AlignmentEnum } = require('ascii-table3'); 
 const { logToFileAndConsole } = require('./utilities.js');
 
 
 const path = require('node:path');
 const variables = require('./vars.json');
-const commandsHelp = variables.commands;
 
 // get the token from dotenv
 const token = process.env.TOKEN;
@@ -139,6 +136,17 @@ function initDatabase() {
             return;
         }
         logToFileAndConsole("Table 'items' ensured.");
+    });
+
+    db.run(`CREATE TABLE IF NOT EXISTS item_types (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT
+    )`, (err) => {
+        if (err) {
+            logToFileAndConsole("Create table error: " + err.message);
+            return;
+        }
+        logToFileAndConsole("Table 'item_types' ensured.");
     });
 
     // create a prices table
