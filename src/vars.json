@@ -14,7 +14,7 @@
         "225321172018003968",
         "427318093069418496"
     ],
-    "known types": {
+    "knownTypes": {
         "Agriculture" : [
             "Seeds",
             "Apples",
@@ -117,14 +117,15 @@
             "Luxury e-car",
             "Economy Car",
             "Luxury Car",
-            "Truck"
+            "Truck",
+            "Bulldozer"
         ],
         "Aerospace": [
             "Fuselage",
             "Wing",
             "Flight Computer",
             "Cockpit",
-            "Altitude Control",
+            "Attitude Control",
             "Propellant Tank",
             "Solid Fuel Booster",
             "Rocket Engine",

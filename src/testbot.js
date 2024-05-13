@@ -3,7 +3,7 @@ const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const sqlite3 = require('sqlite3');
 const dotenv = require('dotenv').config()
 const fs = require('fs');
-const { logToFileAndConsole } = require('./utilities.js');
+const { logToFileAndConsole, sortItems } = require('./utilities.js');
 
 
 const path = require('node:path');
@@ -127,6 +127,7 @@ function initDatabase() {
     // and an items table
     db.run(`CREATE TABLE IF NOT EXISTS items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_id INTEGER,
         name TEXT,
         type INTEGER,
         cached_time INTEGER
@@ -214,4 +215,5 @@ client.on('messageCreate', async (msg) => {
 });
 
 initDatabase();
+sortItems();
 client.login(token);
