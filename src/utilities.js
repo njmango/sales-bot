@@ -20,7 +20,8 @@ module.exports = {
     calculateFinalPrice,
     findLowestPriceForItem,
     addEntry,
-    sortItems
+    sortItems,
+    searchType
 };
 
 const db = new sqlite3.Database('./testsalesData.db', (err) => {
@@ -64,59 +65,6 @@ function sendChunkedMessages(interaction, message, dontReply = false) {
     }
 
     return replied;
-}
-
-async function updateListPrices() {
-
-    logToFileAndConsole("updateListPrices: Starting to update list prices.");
-    db.all("SELECT * FROM sales_list", async (err, rows) => {
-        if (err) {
-            logToFileAndConsole(`updateListPrices: Error fetching sales list: ${err.message}`);
-            return;
-        }
-
-        logToFileAndConsole(`updateListPrices: Processing ${rows.length} rows from sales list.`);
-        for (const row of rows) {
-            const { item_name, quality, price_modifier, id, is_fixed_price } = row;
-            logToFileAndConsole(`updateListPrices: Processing item ${item_name} with ID ${id}.`);
-
-            let items = await getAllDBItems();
-
-            const itemKey = items.find(item => item.name === item_name)?.item_id;
-            if (!itemKey) {
-                logToFileAndConsole(`updateListPrices: Item not found in items list: ${item_name}`);
-                continue;
-            }
-
-            logToFileAndConsole(`updateListPrices: Found item key ${itemKey} for item ${item_name}.`);
-            const priceInfo = await findLowestPriceForItem(0, itemKey, quality);
-            if (!priceInfo.price) {
-                logToFileAndConsole(`updateListPrices: No market price found for ${item_name} at quality ${quality}. Retaining previous price.`);
-                continue;
-            }
-
-            let newPrice;
-            if (price_modifier.includes('%')) {
-                const percentage = parseFloat(price_modifier);
-                newPrice = priceInfo.price * (1 + percentage / 100);
-                logToFileAndConsole(`updateListPrices: Calculated new price with percentage modifier: Original price ${priceInfo.price}, Modifier ${percentage}%, New price ${newPrice.toFixed(4)}`);
-            } else {
-                const fixedChange = parseFloat(price_modifier);
-                newPrice = priceInfo.price + fixedChange;
-                logToFileAndConsole(`updateListPrices: Calculated new price with fixed modifier: Original price ${priceInfo.price}, Modifier ${fixedChange}, New price ${newPrice.toFixed(4)}`);
-            }
-
-            db.run("UPDATE sales_list SET price = ? WHERE id = ?", [newPrice.toFixed(4), id], (err) => {
-                if (err) {
-                    logToFileAndConsole(`updateListPrices: Error updating price for ${item_name}: ${err.message}`);
-                    return;
-                }
-                logToFileAndConsole(`updateListPrices: Successfully updated price for ${item_name} to $${newPrice.toFixed(4)}`);
-            });
-        }
-    });
-
-    
 }
 
 function logToFileAndConsole(message) {
@@ -261,6 +209,43 @@ async function findLowestPriceForItem(realmId, itemId, quality) {
 function checkAdmin(id) {
     return admins.includes(String(id));
 }
+
+async function searchType(typeName) {
+    try {
+        const db = getDB();
+
+        const getItemType = promisify(db.get).bind(db);
+        const getAllItemTypes = promisify(db.all).bind(db);
+
+        const itemType = await getItemType("SELECT id, name FROM item_types WHERE name = ?", [typeName]);
+        if (itemType) {
+            console.log(`Best match found (instant): ${itemType.name}`);
+            return { id: itemType.id, name: itemType.name, similarity: 1.0 };
+        }
+
+        // get all the item types
+        const itemTypes = await getAllItemTypes("SELECT id, name FROM item_types");
+        let highestSimilarity = 0;
+        let bestMatchName = null;
+        let bestMatchId = null;
+
+        for (const type of itemTypes) {
+            const similarity = stringSimilarity.compareTwoStrings(type.name.toLowerCase(), String(typeName).toLowerCase());
+            if (similarity > highestSimilarity) {
+                highestSimilarity = similarity;
+                bestMatchName = type.name;
+                bestMatchId = type.id;
+            }
+        }
+
+        console.log(`Best match found: ${bestMatchName}`);
+        return { id: bestMatchId, name: bestMatchName, similarity: highestSimilarity };
+    } catch (error) {
+        console.error(error);
+        return null;
+    }
+}
+
 
 async function searchItem(input) {
     try {

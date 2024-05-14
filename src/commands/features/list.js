@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const { AsciiTable3 } = require('ascii-table3'); 
-const { sendChunkedMessages, updateListPrices, logToFileAndConsole, getDB   } = require("../../utilities.js");
+const { sendChunkedMessages, updateListPrices, logToFileAndConsole, getDB, searchItem, searchType } = require("../../utilities.js");
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -8,6 +8,30 @@ module.exports = {
 		.setDescription('List current orders')
         .addBooleanOption(
             option => option.setName('compact').setDescription('Compact the list for mobile').setRequired(false)
+        )
+        .addStringOption(
+            option => option.setName('item').setDescription('Filter for a specific item').setRequired(false)
+        )
+        .addIntegerOption(
+            option => option.setName('quality').setDescription('Filter for a specific quality').setRequired(false).setMinValue(0).setMaxValue(12)
+        )
+        .addStringOption(
+            option => option.setName('type').setDescription('Filter for a specific type of product').setRequired(false)
+            .addChoices([
+                {name: 'Agriculture', value: 'Agriculture'},
+                {name: 'Food', value: 'Food'},
+                {name: 'Construction', value: 'Construction'},
+                {name: 'Fashion', value: 'Fashion'},
+                {name: 'Energy', value: 'Energy'},
+                {name: 'Electronics', value: 'Electronics'},
+                {name: 'Automotive', value: 'Automotive'},
+                {name: 'Aerospace', value: 'Aerospace'},
+                {name: 'Resources', value: 'Resources'},
+                {name: 'Research', value: 'Research'}
+            ])
+        )
+        .addUserOption(
+            option => option.setName('user').setDescription('Filter for a specific user').setRequired(false)
         ),
 	async execute(interaction) {
         publishLists(interaction);
@@ -18,14 +42,65 @@ async function publishLists(interaction) {
 
     //updateListPrices(interaction.channel);
 
-    const base_query = `SELECT orderNumber, i.name , quality, quantity, price, price_modifier, users.username, action_type FROM sales_list
+    const item = interaction.options.getString('item');
+    const quality = interaction.options.getInteger('quality');
+    const type = interaction.options.getString('type');
+    const user = interaction.options.getUser('user');
+
+
+    let base_query = `SELECT orderNumber, i.name , quality, quantity, price, price_modifier, users.username, action_type FROM sales_list
     INNER JOIN users ON sales_list.user_id = users.id
-    INNER JOIN items i ON sales_list.item = i.id`
+    INNER JOIN items i ON sales_list.item = i.id WHERE`
     
+    if (item) {
+
+        // search the item
+        const resolvedItem = await searchItem(item);
+        const tableID = resolvedItem.tableid;
+
+        if (resolvedItem.name == null) {
+            interaction.reply({content: "Item not found.", ephemeral: true});
+            return;
+        } 
+
+        if (resolvedItem.certain == false && resolvedItem.name != null && resolvedItem.similarity < 0.7) {
+            interaction.reply({content: `Item not found, did you mean ${resolvedItem.name}?`, ephemeral: true});
+            return;
+        }
+
+        base_query += ` i.id = '${tableID}' AND`;
+    }
+
+    if (quality) {
+        base_query += ` quality >= ${quality} AND`;
+    }
+
+    if (type) {
+
+        const resolvedType = await searchType(type);
+
+        if (resolvedType.name == null) {
+            logToFileAndConsole(`[List: publishLists] Type not found: ${type}`);
+            interaction.reply({content: "Type not found - Please make an admin aware of this error [List: publishLists]", ephemeral: true});
+            return;
+        } 
+
+        if (resolvedType.name != null && resolvedType.similarity < 0.7) {
+            interaction.reply({content: `Type not found, did you mean ${resolvedItem.name}? - Please make an admin aware of this error [List: publishLists]`, ephemeral: true});
+            return;
+        }
+
+        base_query += ` i.type = '${resolvedType.id}' AND`;
+    }
+
+    if (user) {
+        base_query += ` users.discord_id = '${user.id}' AND`;
+    }
+
     // Retrieve and display sales list for both selling and buying
     const queries = {
-        sell: `${base_query} WHERE action_type = 'sell' ORDER BY orderNumber DESC`,
-        buy: `${base_query} WHERE action_type = 'buy' ORDER BY orderNumber DESC`
+        sell: `${base_query} action_type = 'sell' ORDER BY orderNumber DESC`,
+        buy: `${base_query} action_type = 'buy' ORDER BY orderNumber DESC`
     }
 
     const db = getDB();
